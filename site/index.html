@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Who Funds TGA Rebuilds?</title>
+  <meta name="description" content="Empirical decomposition of Treasury General Account rebuild funding channels using auction-schedule surprise identification.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle theme">&#9790;</button>
+
+  <div class="page-shell">
+
+    <!-- ====== HERO ====== -->
+    <section class="hero">
+      <h1>Who Funds Treasury General Account Rebuilds?</h1>
+      <p class="lede">
+        When the U.S. Treasury rebuilds its cash balance, where does the money come from?
+        We identify 43 rapid rebuild episodes from 2005&ndash;2026 and use auction-schedule
+        surprises to trace the causal funding channels. The answer: <strong>money market funds</strong>,
+        drawing on the Fed's <strong>ON RRP facility</strong>.
+      </p>
+      <div class="hero-buttons">
+        <a href="#findings" class="btn btn-primary">Key Findings</a>
+        <a href="#methods" class="btn">Methods</a>
+        <a href="#data-sources" class="btn">Data Sources</a>
+        <a href="https://github.com/smkwray/tgarefill" class="btn">GitHub</a>
+      </div>
+    </section>
+
+    <!-- ====== KEY STATS ====== -->
+    <div class="stat-grid">
+      <div class="stat-card events"><div class="value">43</div><div class="label">Rebuild Events</div></div>
+      <div class="stat-card mmf"><div class="value">+$41B</div><div class="label">MMF Response (1-std, h=4)</div></div>
+      <div class="stat-card onrrp"><div class="value">&minus;$31B</div><div class="label">ON RRP Runoff (1-std, h=4)</div></div>
+      <div class="stat-card sig"><div class="value">5&rarr;0</div><div class="label">Pre-trends eliminated</div></div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- ====== TGA TIMELINE ====== -->
+    <section class="panel" id="overview">
+      <h2>The TGA Rebuild Problem</h2>
+      <p>
+        The Treasury General Account (TGA) is the U.S. government's checking account at the Federal Reserve.
+        When Treasury issues new securities&mdash;particularly short-term bills&mdash;the proceeds flow into the TGA,
+        draining liquidity from the financial system. These "rebuild" episodes can move hundreds of billions
+        of dollars in weeks, yet the transmission channels are poorly understood.
+      </p>
+      <p>
+        This project asks: <strong>who actually provides the funding?</strong> Drag to zoom, hover for values,
+        double-click to reset.
+      </p>
+      <div id="chart-timeline" style="width:100%;height:420px;"></div>
+      <p class="chart-caption">
+        Weekly TGA balance (DTS Wednesday close, $B) with 43 rebuild events shaded in orange.
+        Use the range slider to zoom into specific periods.
+      </p>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ====== KEY FINDINGS ====== -->
+    <section class="panel" id="findings">
+      <h2>Key Findings</h2>
+
+      <h3>1. Money Market Funds Are the Primary Absorbers</h3>
+      <p>
+        Using a bill-size surprise instrument (see <a href="#methods">Methods</a>), we find that
+        a one-standard-deviation ($19B) unexpected increase in weekly bill issuance causes
+        MMF Treasury holdings to rise by <strong>$41B over 4 weeks</strong> (t=3.4, Newey-West).
+      </p>
+
+      <div class="callout finding">
+        <p>
+          <strong>Central result:</strong> Unexpected bill issuance that rebuilds the TGA is primarily funded
+          by money market funds, with ~75% of the MMF absorption sourced from ON RRP runoff.
+          Bank deposits, reserves, and bank Treasury holdings show no significant causal response.
+        </p>
+      </div>
+
+      <h3>2. Impulse Responses: Binary vs Bill-Size Surprise</h3>
+      <p>
+        The interactive charts below compare impulse response functions from two shock specifications.
+        <strong style="color:var(--accent);">Blue = binary shock</strong> (contaminated by pre-trends).
+        <strong style="color:var(--bank-ta);">Red = bill-size surprise</strong> (clean identification).
+        The vertical dotted line marks the shock date. Hover for exact values.
+      </p>
+      <div id="chart-irf-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
+      <p class="chart-caption">
+        The bill-surprise specification eliminates spurious Bank T&amp;A and Deposits responses
+        while strengthening MMF Treasury and ON RRP channels.
+      </p>
+
+      <h3>3. Pre-Trend Scorecard</h3>
+      <p>
+        A clean shock should show no significant movement <em>before</em> it occurs.
+        The binary shock fails this test in 5 of 6 channels. The bill-surprise passes.
+      </p>
+      <div id="pretrend-cards" class="pretrend-grid"></div>
+
+      <h3>4. Funding Channels Have Evolved Over Time</h3>
+      <p>The dominant funding channel has shifted across eras:</p>
+      <div id="chart-era" style="width:100%;height:380px;"></div>
+      <p class="chart-caption">
+        2009&ndash;2013: reserve-driven. 2014&ndash;2019: mixed reserves &amp; deposits. 2020&ndash;2022: diversified with ON RRP and MMF emerging.
+      </p>
+
+      <h3>5. The ON RRP Buffer</h3>
+      <p>
+        ON RRP declines by <strong>$31B per 1-std shock</strong> (t=&minus;5.0).
+        The mechanism: MMFs redeem ON RRP balances to buy bills, channeling money from
+        the Fed's balance sheet to the TGA without touching bank deposits.
+      </p>
+      <div id="chart-onrrp" style="width:100%;height:380px;"></div>
+      <p class="chart-caption">
+        TGA (blue, left axis) and ON RRP (green, right axis) during the facility era. Orange bands = rebuild events.
+      </p>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ====== EVENTS ====== -->
+    <section class="panel" id="events">
+      <h2>Rebuild Events</h2>
+      <p>
+        43 rapid TGA rebuild episodes detected using DTS Wednesday-close levels and
+        positive-only 90th percentile thresholds. Hover over events for details.
+      </p>
+      <div id="chart-events" style="width:100%;height:400px;"></div>
+      <p class="chart-caption">
+        Bubble size = event duration in weeks. Blue = bill-heavy (&ge;70% bills). Orange = mixed.
+      </p>
+
+      <h3>Attribution Decomposition &mdash; Top 20 Events</h3>
+      <p>
+        Stacked bars show positive proxy contributions by channel. White dots = actual &Delta;TGA.
+        Bars exceeding the dot indicate over-explanation from channel overlap.
+      </p>
+      <div id="chart-attribution" style="width:100%;height:420px;"></div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ====== METHODS ====== -->
+    <section class="panel" id="methods">
+      <h2>Methods</h2>
+
+      <h3>Data Pipeline</h3>
+      <p>
+        Weekly panel: 1,068 observations, 27 variables, 2005&ndash;2026. All values in millions of USD.
+        TGA from DTS Wednesday closing balances (not FRED WTREGEN weekly average).
+        H.8 series converted from billions. OFR monthly data forward-filled via <code>merge_asof</code>.
+      </p>
+
+      <h3>Event Detection</h3>
+      <p>
+        Flagged when weekly &Delta;TGA or rolling 4w/8w change exceeds the 90th percentile
+        <strong>of positive changes only</strong>. Contiguous flagged weeks (max 9-day gap) grouped into events.
+      </p>
+
+      <h3>Baseline Attribution</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Channel</th><th>Source</th><th>Sign</th><th>Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>Reserve drain</td><td>FRED WRBWFRBL (H.4.1)</td><td>&minus;1</td><td>Reserves &darr; &rarr; money &rarr; TGA</td></tr>
+            <tr><td>Deposit drawdown</td><td>FRED DPSACBW027NBOG (H.8)</td><td>&minus;1</td><td>Deposits &darr; &rarr; money left banks</td></tr>
+            <tr><td>ON RRP runoff</td><td>FRED RRPONTSYD</td><td>&minus;1</td><td>ON RRP &darr; &rarr; money left facility</td></tr>
+            <tr><td>Bank T&amp;A</td><td>FRED TASACBW027NBOG (H.8)</td><td>+1</td><td>Banks bought Treasuries</td></tr>
+            <tr><td>MMF Treasury</td><td>OFR MMF-MMF_T_TOT-M</td><td>+1</td><td>MMFs bought Treasuries</td></tr>
+            <tr><td>Dealer repo</td><td>OFR NYPD-PD_RP_T_TOT-A</td><td>+1</td><td>Dealers financed inventory</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>14-day staleness guard. Foreign holdings (quarterly) excluded from weekly attribution.</p>
+
+      <h3>Auction-Schedule Surprise</h3>
+      <div class="callout">
+        <p>
+          <strong>surprise = offering_amt &minus; trailing_median</strong>(last 8 same-term auctions, min 4).
+          Summed to weekly. Tax-receipt surprise (DTS deposits) as control.
+          Strips ~94% of predictable auction supply.
+        </p>
+      </div>
+
+      <h3>Local Projections</h3>
+      <p style="font-family:var(--font-mono);font-size:0.9rem;padding:8px 0;">
+        &Delta;y<sub>t+h</sub> = &alpha; + &beta;(h) &middot; shock<sub>t</sub> + &gamma; &middot; controls<sub>t</sub> + &epsilon;<sub>t+h</sub>
+      </p>
+      <p>
+        Controls: 2 shock lags, 1 response lag, 11 month dummies, tax-receipt surprise.
+        Newey-West HAC SEs (bandwidth = horizon). Placebo tests at h=&minus;4 to h=&minus;1.
+      </p>
+
+      <div class="callout caution">
+        <p>
+          <strong>Caveats:</strong> (1) Identifies <em>issuance-driven</em> rebuilds only.
+          (2) h=&minus;1 ON RRP pre-trend from same-week announcement.
+          (3) Shock persistence (autocorr=0.86) inflates h&gt;8.
+          (4) CMB robustness supports direction but has own pre-trends.
+        </p>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ====== DATA SOURCES ====== -->
+    <section class="panel" id="data-sources">
+      <h2>Data Sources</h2>
+      <p>All data from free, official U.S. government sources. No proprietary data.</p>
+      <div class="source-grid">
+        <div class="source-card"><div class="source-name">FiscalData DTS</div><div class="source-detail">Daily Treasury Statement. TGA Wednesday close = primary series.</div><span class="source-freq">Daily</span></div>
+        <div class="source-card"><div class="source-name">FiscalData Auctions</div><div class="source-detail">Auction results. Basis for bill-size surprise instrument.</div><span class="source-freq">Per auction</span></div>
+        <div class="source-card"><div class="source-name">FRED H.4.1</div><div class="source-detail">TGA (WTREGEN), reserves (WRBWFRBL), reverse repos. Millions USD.</div><span class="source-freq">Weekly</span></div>
+        <div class="source-card"><div class="source-name">FRED H.8</div><div class="source-detail">Deposits (DPSACBW027NBOG), bank T&amp;A (TASACBW027NBOG). Billions &rarr; millions.</div><span class="source-freq">Weekly</span></div>
+        <div class="source-card"><div class="source-name">FRED ON RRP</div><div class="source-detail">RRPONTSYD. Daily facility usage, resampled weekly.</div><span class="source-freq">Daily</span></div>
+        <div class="source-card"><div class="source-name">OFR STFM &mdash; MMF</div><div class="source-detail">42 series incl. MMF Treasury holdings. Monthly, forward-filled.</div><span class="source-freq">Monthly</span></div>
+        <div class="source-card"><div class="source-name">OFR STFM &mdash; NYPD</div><div class="source-detail">194 series incl. dealer Treasury repo. Ended Dec 2021.</div><span class="source-freq">Weekly</span></div>
+        <div class="source-card"><div class="source-name">FRED FDHBFIN</div><div class="source-detail">Foreign Treasury holdings. Quarterly. Reference only.</div><span class="source-freq">Quarterly</span></div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ====== LIMITATIONS ====== -->
+    <section class="panel" id="limitations">
+      <h2>Limitations</h2>
+      <ul>
+        <li><strong>Issuance-specific.</strong> Does not capture tax receipts, coupon issuance, or spending.</li>
+        <li><strong>Weekly frequency.</strong> May miss intra-week dynamics.</li>
+        <li><strong>Shock persistence.</strong> Autocorrelation = 0.86. Long-horizon effects contaminated.</li>
+        <li><strong>NSA baseline.</strong> Month dummies partially control seasonality.</li>
+        <li><strong>Accounting overlap.</strong> Channels are not mutually exclusive.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p><a href="#methods">Methods</a> &middot; <a href="#data-sources">Data</a> &middot; <a href="https://github.com/smkwray/tgarefill">GitHub</a></p>
+      <p style="margin-top:8px;">Built from free federal data. No proprietary sources.</p>
+    </footer>
+
+  </div>
+
+  <script>
+    const toggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    const saved = localStorage.getItem('theme');
+    if (saved) html.dataset.theme = saved;
+    else if (window.matchMedia('(prefers-color-scheme: light)').matches) html.dataset.theme = 'light';
+    toggle.textContent = html.dataset.theme === 'light' ? '\u2600' : '\u263E';
+    toggle.addEventListener('click', () => {
+      const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+      html.dataset.theme = next;
+      localStorage.setItem('theme', next);
+      toggle.textContent = next === 'light' ? '\u2600' : '\u263E';
+    });
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

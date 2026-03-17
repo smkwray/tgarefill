@@ -1,0 +1,57 @@
+series:
+  tga_weekly_wednesday:
+    id: "WTREGEN"
+    frequency: "weekly"
+    description: "U.S. Treasury General Account at Federal Reserve Banks, Wednesday level"
+  reserve_balances_weekly_wednesday:
+    id: "WRBWFRBL"
+    frequency: "weekly"
+    description: "Reserve balances with Federal Reserve Banks, Wednesday level"
+  reverse_repos_weekly_wednesday:
+    id: "WLRRAL"
+    frequency: "weekly"
+    description: "Reverse repurchase agreements, Wednesday level"
+  reverse_repos_others_weekly_wednesday:
+    id: "WLRRAOL"
+    frequency: "weekly"
+    description: "Reverse repurchase agreements with others, Wednesday level"
+  on_rrp_daily_total:
+    id: "RRPONTSYD"
+    frequency: "daily"
+    description: "Overnight Reverse Repurchase Agreements: Treasury Securities Sold by the Federal Reserve in the Temporary Open Market Operations"
+  commercial_bank_deposits_weekly_nsa:
+    id: "DPSACBW027NBOG"
+    frequency: "weekly"
+    description: "Deposits, all commercial banks, not seasonally adjusted"
+  commercial_bank_deposits_weekly_sa:
+    id: "DPSACBW027SBOG"
+    frequency: "weekly"
+    description: "Deposits, all commercial banks, seasonally adjusted"
+  bank_treasury_and_agency_securities_weekly_nsa:
+    id: "TASACBW027NBOG"
+    frequency: "weekly"
+    description: "Treasury and agency securities, all commercial banks, not seasonally adjusted"
+  bank_treasury_and_agency_securities_weekly_sa:
+    id: "TASACBW027SBOG"
+    frequency: "weekly"
+    description: "Treasury and agency securities, all commercial banks, seasonally adjusted"
+  other_deposits_weekly_nsa:
+    id: "ODSACBW027NBOG"
+    frequency: "weekly"
+    description: "Other deposits, all commercial banks, not seasonally adjusted"
+  other_deposits_weekly_sa:
+    id: "ODSACBW027SBOG"
+    frequency: "weekly"
+    description: "Other deposits, all commercial banks, seasonally adjusted"
+  large_time_deposits_weekly_nsa:
+    id: "LTDACBW027NBOG"
+    frequency: "weekly"
+    description: "Large time deposits, all commercial banks, not seasonally adjusted"
+  large_time_deposits_weekly_sa:
+    id: "LTDACBW027SBOG"
+    frequency: "weekly"
+    description: "Large time deposits, all commercial banks, seasonally adjusted"
+  foreign_treasury_holdings_quarterly:
+    id: "FDHBFIN"
+    frequency: "quarterly"
+    description: "Federal debt held by foreign and international investors, quarterly, billions"

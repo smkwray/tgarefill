@@ -1,0 +1,39 @@
+series:
+  deposits: "commercial_bank_deposits_weekly_nsa"
+  bank_treasury_agency: "bank_treasury_and_agency_securities_weekly_nsa"
+
+attribution:
+  max_lookback_days: 14
+  proxies:
+    reserve_drain_proxy:
+      column: "reserve_balances_weekly_wednesday"
+      sign: -1
+    deposit_drawdown_proxy:
+      column: "commercial_bank_deposits_weekly_nsa"
+      sign: -1
+    on_rrp_runoff_proxy:
+      column: "on_rrp_daily_total"
+      sign: -1
+    bank_treasury_absorption_proxy:
+      column: "bank_treasury_and_agency_securities_weekly_nsa"
+      sign: 1
+    mmf_treasury_absorption_proxy:
+      column: "mmf_treasury_holdings"
+      sign: 1
+    dealer_repo_proxy:
+      column: "dealer_treasury_repo"
+      sign: 1
+
+local_projections:
+  max_horizon: 12
+  placebo_horizons: 4
+  shock_lags: 2
+  response_lags: 1
+  add_month_dummies: true
+  responses:
+    reserve_balances_weekly_wednesday: "Reserves"
+    commercial_bank_deposits_weekly_nsa: "Bank Deposits"
+    on_rrp_daily_total: "ON RRP"
+    bank_treasury_and_agency_securities_weekly_nsa: "Bank T&A Holdings"
+    mmf_treasury_holdings: "MMF Treasury Holdings"
+    dealer_treasury_repo: "Dealer Treasury Repo"

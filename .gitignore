@@ -1,0 +1,70 @@
+# environments
+.venv/
+venv/
+env/
+.env
+.python-version
+
+# python cache
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# build
+build/
+dist/
+*.egg-info/
+
+# local data artifacts (large, reproducible from scripts)
+data/raw/*
+data/staging/*
+data/processed/*
+!data/raw/.gitkeep
+!data/staging/.gitkeep
+!data/processed/.gitkeep
+
+# generated outputs (reproducible via make paper)
+outputs/figures/*
+outputs/tables/*
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+
+# memo (generated, not essential for public)
+outputs/*.md
+
+# do/ orchestration docs (internal workflow, not public)
+do/
+
+# internal planning docs
+AGENTS.md
+PLAN.md
+ROADMAP.md
+DATA_SOURCES.md
+docs/original_guide.md
+docs/codex-bootstrap.md
+docs/architecture.md
+docs/mvp-definition.md
+docs/public-repo-notes.md
+
+# logs and delegate outputs
+logs/
+
+# notebooks
+.ipynb_checkpoints/
+notebooks/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# cloud sync artifacts
+*-B[A-Z][A-Z][A-Z].md
+*\ (1).*
+*\ 2.*
+
+# uv lock (reproducible from pyproject.toml)
+uv.lock

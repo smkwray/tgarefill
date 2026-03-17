@@ -1,0 +1,11 @@
+weekly:
+  delta_tga_quantile: 0.90
+  rolling_4w_quantile: 0.90
+  rolling_8w_quantile: 0.90
+  rolling_z_window_weeks:
+  delta_tga_zscore_threshold:
+  rolling_4w_zscore_threshold:
+  rolling_8w_zscore_threshold:
+  max_gap_days_within_event: 9
+  bill_heavy_threshold: 0.70
+  coupon_heavy_threshold: 0.30

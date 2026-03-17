@@ -1,0 +1,92 @@
+[
+  {
+    "era": "2009-13",
+    "source": "Reserve drain",
+    "count": 6
+  },
+  {
+    "era": "2009-13",
+    "source": "Deposit drawdown",
+    "count": 1
+  },
+  {
+    "era": "2009-13",
+    "source": "ON RRP runoff",
+    "count": 0
+  },
+  {
+    "era": "2009-13",
+    "source": "Bank T&A",
+    "count": 0
+  },
+  {
+    "era": "2009-13",
+    "source": "MMF Treasury",
+    "count": 0
+  },
+  {
+    "era": "2009-13",
+    "source": "Dealer repo",
+    "count": 0
+  },
+  {
+    "era": "2014-19",
+    "source": "Reserve drain",
+    "count": 9
+  },
+  {
+    "era": "2014-19",
+    "source": "Deposit drawdown",
+    "count": 7
+  },
+  {
+    "era": "2014-19",
+    "source": "ON RRP runoff",
+    "count": 3
+  },
+  {
+    "era": "2014-19",
+    "source": "Bank T&A",
+    "count": 0
+  },
+  {
+    "era": "2014-19",
+    "source": "MMF Treasury",
+    "count": 2
+  },
+  {
+    "era": "2014-19",
+    "source": "Dealer repo",
+    "count": 0
+  },
+  {
+    "era": "2020-22",
+    "source": "Reserve drain",
+    "count": 4
+  },
+  {
+    "era": "2020-22",
+    "source": "Deposit drawdown",
+    "count": 2
+  },
+  {
+    "era": "2020-22",
+    "source": "ON RRP runoff",
+    "count": 4
+  },
+  {
+    "era": "2020-22",
+    "source": "Bank T&A",
+    "count": 0
+  },
+  {
+    "era": "2020-22",
+    "source": "MMF Treasury",
+    "count": 3
+  },
+  {
+    "era": "2020-22",
+    "source": "Dealer repo",
+    "count": 1
+  }
+]

@@ -1,0 +1,20 @@
+datasets:
+  mmf:
+    search_terms:
+      - "Treasury bill"
+      - "Treasury securities"
+      - "repurchase agreements"
+      - "Federal Reserve reverse repurchase"
+      - "government obligations"
+  nypd:
+    search_terms:
+      - "net positions treasury"
+      - "primary dealers treasury bill"
+      - "primary dealers coupon securities"
+      - "repurchase agreements"
+  repo:
+    search_terms:
+      - "treasury collateral"
+      - "reverse repo"
+      - "bilateral repo"
+      - "tri-party repo"

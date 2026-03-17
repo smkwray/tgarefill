@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tgarefill"
+version = "0.1.0"
+description = "Event-decomposition and data pipeline for Treasury General Account rebuild funding chains."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+  {name = "Shane Wray"}
+]
+dependencies = [
+  "beautifulsoup4>=4.12",
+  "lxml>=5.2",
+  "openpyxl>=3.1",
+  "pandas>=2.2",
+  "pyarrow>=15.0",
+  "python-dateutil>=2.9",
+  "PyYAML>=6.0",
+  "requests>=2.32",
+  "statsmodels>=0.14",
+  "xlrd>=2.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+  "matplotlib>=3.9",
+  "seaborn>=0.13",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
