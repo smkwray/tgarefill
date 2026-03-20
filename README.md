@@ -87,8 +87,8 @@ uv pip install -e ".[dev]"
 # Canonical MVP path
 make mvp
 
-# Extended paper build
-make paper
+# Extended site build
+make site
 ```
 
 ## Outputs
@@ -101,7 +101,7 @@ data/processed/event_candidates.parquet
 outputs/tables/attribution_baseline.csv
 ```
 
-The paper build extends that with additional tables, figures, and the repo-root `site/` bundle used for GitHub Pages:
+The extended site build extends that with additional tables, figures, and the repo-root `site/` bundle used for GitHub Pages:
 
 ```
 outputs/

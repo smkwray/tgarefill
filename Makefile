@@ -7,7 +7,7 @@ PYTHON ?= $(shell \
 		command -v python3 || command -v python; \
 	fi)
 
-.PHONY: venv install sync-raw staging panel events attribution local-projections auction-shock-lp figures site-data mvp paper test clean
+.PHONY: venv install sync-raw staging panel events attribution local-projections auction-shock-lp figures site-data mvp site paper test clean
 
 venv:
 	$(PYTHON) -m venv .venv
@@ -45,7 +45,9 @@ site-data:
 
 mvp: sync-raw staging panel events attribution
 
-paper: mvp local-projections auction-shock-lp figures site-data
+site: mvp local-projections auction-shock-lp figures site-data
+
+paper: site
 
 test:
 	$(PYTHON) -B -m pytest -q
