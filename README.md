@@ -2,13 +2,13 @@
 
 **[Live Site](https://smkwray.github.io/tgarefill/)** | Empirical decomposition of Treasury General Account rebuild funding channels using auction-schedule surprise identification.
 
-When the U.S. Treasury rebuilds its cash balance by issuing securities, where does the money come from? This project identifies 43 rapid rebuild episodes (2005-2026) and uses a bill-size surprise instrument to trace the causal funding channels.
+When the U.S. Treasury rebuilds its cash balance by issuing securities, where does the money come from? This project identifies 51 rapid rebuild episodes (2005-2026) and uses a bill-size surprise instrument to trace the causal funding channels.
 
 ## Central Finding
 
 Unexpected bill issuance that rebuilds the TGA is primarily funded by **money market funds** (+$41B per 1-std shock, t=3.4), with ~75% of that absorption sourced from **ON RRP runoff** (-$31B, t=-5.0). Bank deposits, reserves, and bank Treasury holdings show no significant causal response once the predictable component of auction supply is removed.
 
-The bill-size surprise eliminates pre-trends in 5 of 6 channels (14 significant pre-trends → 1), confirming that the binary event indicator used in prior analysis was contaminated by predictable auction-schedule repositioning.
+The bill-size surprise eliminates most pre-trends (12 significant placebo coefficients → 1), confirming that the binary event indicator used in prior analysis was contaminated by predictable auction-schedule repositioning.
 
 ## Method
 
@@ -35,10 +35,10 @@ Weeks are flagged as rapid rebuilds when the weekly ΔTGA or rolling 4w/8w cumul
 
 For each non-CMB bill auction:
 ```
-surprise = offering_amount − trailing_median(last 8 same-term auctions, min 4)
+surprise = offering_amount − trailing_median(last 8 same-term × reopening-status auctions, min 4)
 ```
 
-Aggregated to weekly (Wednesday-ending). This strips ~94% of weekly auction supply that was already announced by the prior Wednesday, isolating unexpected variation in Treasury financing. A tax-receipt surprise control (from DTS deposit categories) absorbs non-issuance TGA movements.
+Aggregated to weekly (Wednesday-ending). This strips ~94% of weekly auction supply that was already announced by the prior Wednesday, isolating unexpected variation in Treasury financing. A tax-receipt surprise control (from DTS deposit categories) absorbs non-issuance TGA movements. A same-term-only grouping is tracked separately as a robustness comparison.
 
 ### Local Projections
 
@@ -47,7 +47,7 @@ Jordà (2005) specification:
 Δy_{t+h} = α + β(h) · shock_t + γ · controls_t + ε_{t+h}
 ```
 
-Controls: 2 shock lags, 1 response lag, 11 month dummies, tax-receipt surprise. Newey-West HAC standard errors (bandwidth = horizon). Placebo tests at h=-4 to h=-1.
+Baseline (binary shock): 2 shock lags, 1 response lag, 11 month dummies. Bill-surprise specification adds a tax-receipt surprise control (from DTS deposit categories) to absorb non-issuance TGA movements. Newey-West HAC standard errors (bandwidth = horizon). Placebo tests at h=-4 to h=-1.
 
 ### Regime Classification
 
@@ -57,12 +57,12 @@ ON RRP abundant (≥$100B) vs. scarce (<$100B). Pre-facility weeks (before 2013,
 
 | Channel | Binary Pre-trends | Bill-Surprise Pre-trends | Bill-Surprise h=4 (1-std) |
 |---------|:-:|:-:|:-:|
-| Reserves | 1/4 | 0/4 | -$2B, t=-0.1 |
-| Bank Deposits | 3/4 | 0/4 | +$8B, t=0.7 |
-| ON RRP | 0/4 | 1/4 | **-$31B, t=-5.0*** |
-| Bank T&A | 3/4 | 0/4 | +$4B, t=1.5 |
-| MMF Treasury | 3/4 | 0/4 | **+$41B, t=3.4*** |
-| Dealer Repo | 4/4 | 0/4 | -$1B, t=-0.2 |
+| Reserves | 2/4 | 0/4 | -$2B, t=-0.1 |
+| Bank Deposits | 2/4 | 0/4 | +$8B, t=0.7 |
+| ON RRP | 3/4 | 1/4 | **-$31B, t=-5.0*** |
+| Bank T&A | 1/4 | 0/4 | +$4B, t=1.5 |
+| MMF Treasury | 2/4 | 0/4 | **+$41B, t=3.4*** |
+| Dealer Repo | 2/4 | 0/4 | -$1B, t=-0.2 |
 
 \* Significant at 5% with Newey-West HAC standard errors.
 
@@ -71,37 +71,42 @@ ON RRP abundant (≥$100B) vs. scarce (<$100B). Pre-facility weeks (before 2013,
 1. **Issuance-specific.** The shock identifies unexpected bill supply, not all TGA changes.
 2. **h=-1 ON RRP.** The one remaining pre-trend (t=-2.1) likely reflects same-week announcement effects.
 3. **Shock persistence.** Bill surprise autocorrelation = 0.86. Interpret h=4-8 as primary; h>8 is contaminated.
-4. **NSA baseline.** Month dummies partially control for seasonality; SA sensitivity not yet run.
+4. **NSA baseline.** Month dummies control for seasonality. SA sensitivity confirms: swapping NSA for SA deposits and bank T&A leaves all results unchanged.
 5. **Accounting overlap.** Proxy channels are not mutually exclusive.
 
 ## Quick Start
 
+Activate the environment you want `make` to use, install the package, then run the canonical MVP pipeline. `make` will use the active shell environment, or `VIRTUAL_ENV` / `UV_PROJECT_ENVIRONMENT` if those are set.
+
 ```bash
-# Setup
+# Example with uv
 uv venv ~/venvs/tgarefill --python 3.11
-export UV_PROJECT_ENVIRONMENT=~/venvs/tgarefill
+source ~/venvs/tgarefill/bin/activate
 uv pip install -e ".[dev]"
 
-# Full pipeline
-make paper
+# Canonical MVP path
+make mvp
 
-# Or step by step
-python -B scripts/download_all.py
-python -B scripts/build_staging.py
-python -B scripts/build_master_panel.py
-python -B scripts/build_event_candidates.py
-python -B scripts/build_attribution_baseline.py
-python -B scripts/build_local_projections.py
-python -B scripts/build_auction_shock_lp.py
-python -B scripts/build_figures.py
+# Extended paper build
+make paper
 ```
 
 ## Outputs
 
+The MVP command creates the canonical artifacts:
+
+```
+data/processed/master_weekly_panel.parquet
+data/processed/event_candidates.parquet
+outputs/tables/attribution_baseline.csv
+```
+
+The paper build extends that with additional tables, figures, and the repo-root `site/` bundle used for GitHub Pages:
+
 ```
 outputs/
 ├── figures/
-│   ├── tga_timeline_events.png        # TGA with 43 events highlighted
+│   ├── tga_timeline_events.png        # TGA with 51 events highlighted
 │   ├── irf_binary_vs_bill_surprise.png # Central comparison figure
 │   ├── attribution_stacked_top20.png   # Top 20 event decomposition
 │   ├── era_dominant_source.png         # Funding channel evolution
@@ -115,8 +120,11 @@ outputs/
 │   ├── attribution_baseline.csv
 │   ├── local_projections.csv
 │   ├── auction_shock_lp.csv
-│   └── table[1-4]_*.csv              # Paper tables
-└── memo_01_baseline_attribution.md
+│   └── auction_shock_grouping_comparison.csv
+site/
+├── data/                              # GitHub Pages JSON
+├── img/                               # GitHub Pages figures
+└── index.html                         # GitHub Pages entrypoint
 ```
 
 ## Data Sources

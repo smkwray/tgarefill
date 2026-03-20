@@ -1,43 +1,54 @@
-PYTHON ?= python
-VENV ?= .venv
-BIN := $(VENV)/bin
+PYTHON ?= $(shell \
+	if [ -n "$$VIRTUAL_ENV" ] && [ -x "$$VIRTUAL_ENV/bin/python" ]; then \
+		printf '%s\n' "$$VIRTUAL_ENV/bin/python"; \
+	elif [ -n "$$UV_PROJECT_ENVIRONMENT" ] && [ -x "$$UV_PROJECT_ENVIRONMENT/bin/python" ]; then \
+		printf '%s\n' "$$UV_PROJECT_ENVIRONMENT/bin/python"; \
+	else \
+		command -v python3 || command -v python; \
+	fi)
 
-.PHONY: venv install sync-raw staging panel events attribution local-projections figures mvp paper test clean
+.PHONY: venv install sync-raw staging panel events attribution local-projections auction-shock-lp figures site-data mvp paper test clean
 
 venv:
-	$(PYTHON) -m venv $(VENV)
+	$(PYTHON) -m venv .venv
 
-install: venv
-	$(BIN)/python -m pip install -U pip
-	$(BIN)/python -m pip install -e ".[dev]"
+install:
+	$(PYTHON) -m pip install -U pip
+	$(PYTHON) -m pip install -e ".[dev]"
 
 sync-raw:
-	$(BIN)/python scripts/download_all.py
+	$(PYTHON) scripts/download_all.py
 
 staging:
-	$(BIN)/python scripts/build_staging.py
+	$(PYTHON) scripts/build_staging.py
 
 panel:
-	$(BIN)/python scripts/build_master_panel.py
+	$(PYTHON) scripts/build_master_panel.py
 
 events:
-	$(BIN)/python scripts/build_event_candidates.py
+	$(PYTHON) scripts/build_event_candidates.py
 
 attribution:
-	$(BIN)/python scripts/build_attribution_baseline.py
+	$(PYTHON) scripts/build_attribution_baseline.py
 
 local-projections:
-	$(BIN)/python scripts/build_local_projections.py
+	$(PYTHON) scripts/build_local_projections.py
+
+auction-shock-lp:
+	$(PYTHON) scripts/build_auction_shock_lp.py
 
 figures:
-	$(BIN)/python scripts/build_figures.py
+	$(PYTHON) scripts/build_figures.py
+
+site-data:
+	$(PYTHON) scripts/build_site_data.py
 
 mvp: sync-raw staging panel events attribution
 
-paper: mvp local-projections figures
+paper: mvp local-projections auction-shock-lp figures site-data
 
 test:
-	$(BIN)/python -m pytest -q
+	$(PYTHON) -B -m pytest -q
 
 clean:
 	rm -rf data/staging/*

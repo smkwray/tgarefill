@@ -16,8 +16,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
-import seaborn as sns
 
+from tgarefill.analytics.eras import ERA_ORDER, assign_era
 from tgarefill.logging_utils import configure_logging
 from tgarefill.settings import get_settings
 
@@ -108,14 +108,11 @@ def fig_era_dominant_source(attr: pd.DataFrame, out: Path) -> None:
     attr = attr.copy()
     attr["dominant"] = dominant
 
-    year = pd.to_datetime(attr["baseline_date"]).dt.year
-    attr["era"] = pd.cut(
-        year,
-        bins=[2007, 2013, 2019, 2022, 2027],
-        labels=["2008-13", "2014-19", "2020-22", "2023-26"],
-    )
+    year = pd.to_datetime(attr["baseline_date"]).dt.year.astype(int)
+    attr["era"] = year.map(assign_era)
 
     ct = pd.crosstab(attr["era"], attr["dominant"])
+    ct = ct.reindex(ERA_ORDER, fill_value=0)
     # Reorder columns by total
     ct = ct[ct.sum().sort_values(ascending=False).index]
 

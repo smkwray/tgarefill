@@ -25,13 +25,26 @@ def run(script_name: str) -> None:
 
 def main() -> None:
     configure_logging()
-    for script in [
-        "download_fred.py",
-        "download_fiscaldata.py",
-        "download_ofr_stfm.py",
-        "download_treasury_home.py",
-    ]:
-        run(script)
+    jobs = [
+        ("download_fred.py", True),
+        ("download_fiscaldata.py", True),
+        ("download_ofr_stfm.py", False),
+        ("download_treasury_home.py", False),
+    ]
+    required_failures: list[str] = []
+    for script, required in jobs:
+        try:
+            run(script)
+        except subprocess.CalledProcessError as exc:
+            if required:
+                required_failures.append(script)
+                logger.error("Required downloader failed: %s", script)
+            else:
+                logger.warning("Optional downloader failed: %s (%s)", script, exc)
+    if required_failures:
+        raise RuntimeError(
+            f"Required download steps failed: {', '.join(required_failures)}"
+        )
 
 
 if __name__ == "__main__":

@@ -86,6 +86,56 @@ function plotlyConfig(small = false) {
   };
 }
 
+function formatSignedBillions(value, digits = 0) {
+  if (value == null || Number.isNaN(value)) return '—';
+  const sign = value >= 0 ? '+' : '−';
+  return `${sign}$${Math.abs(value).toFixed(digits)}B`;
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+async function renderSummary() {
+  const summary = await fetch('data/summary.json').then(r => r.json());
+  const mmf = summary.headline_effects.mmf_treasury_holdings;
+  const onrrp = summary.headline_effects.on_rrp_daily_total;
+  const binary = summary.pretrends.binary;
+  const bill = summary.pretrends.bill_surprise;
+  const panel = summary.panel;
+  const startYear = panel.start_date.slice(0, 4);
+  const endYear = panel.end_date.slice(0, 4);
+
+  setText('summary-event-count-inline', String(summary.event_count));
+  setText('summary-event-count-caption', String(summary.event_count));
+  setText('summary-event-count-events', String(summary.event_count));
+  setText('stat-events', String(summary.event_count));
+  setText('stat-mmf', formatSignedBillions(mmf.beta_bn, 0));
+  setText('stat-onrrp', formatSignedBillions(onrrp.beta_bn, 0));
+  setText(
+    'stat-pretrends',
+    `${binary.significant_placebo_count}→${bill.significant_placebo_count}`
+  );
+
+  setText('summary-bill-shock-sd', `$${summary.bill_shock_sd_bn.toFixed(0)}B`);
+  setText('summary-results-shock', `$${summary.bill_shock_sd_bn.toFixed(0)}B`);
+  setText('summary-mmf-effect', `${formatSignedBillions(mmf.beta_bn, 0)} over 4 weeks`);
+  setText('summary-mmf-tstat', mmf.t_stat_nw.toFixed(1));
+  setText('summary-onrrp-effect', `${formatSignedBillions(onrrp.beta_bn, 0)} per 1-std shock`);
+  setText('summary-onrrp-tstat', onrrp.t_stat_nw.toFixed(1));
+
+  setText('summary-binary-pretrend-total', String(binary.significant_placebo_count));
+  setText('summary-binary-pretrend-channels', String(binary.channels_with_hits));
+  setText('summary-bill-pretrend-total', String(bill.significant_placebo_count));
+  setText('summary-bill-pretrend-channels', String(bill.channels_with_hits));
+
+  setText('summary-panel-obs', panel.weekly_observations.toLocaleString());
+  setText('summary-panel-vars', String(panel.variable_count));
+  setText('summary-panel-start', startYear);
+  setText('summary-panel-end', endYear);
+}
+
 /* ====== 1. TGA Timeline with Events ====== */
 async function renderTimeline() {
   const [timeline, events] = await Promise.all([
@@ -205,7 +255,7 @@ async function renderAttribution() {
 /* ====== 4. Era Dominant Source ====== */
 async function renderEraBars() {
   const data = await fetch('data/era_summary.json').then(r => r.json());
-  const eras = ['2009-13', '2014-19', '2020-22'];
+  const eras = [...new Set(data.map(d => d.era))].sort();
   const sources = [...new Set(data.map(d => d.source))];
 
   const sourceColors = {
@@ -302,7 +352,109 @@ async function renderEventScatter() {
   }), plotlyConfig(true));
 }
 
-/* ====== 7. Pre-trend Scorecard ====== */
+/* ====== 7. h=4 Results Table ====== */
+async function renderResultsTable() {
+  const data = await fetch('data/lp_comparison.json').then(r => r.json());
+  const container = document.getElementById('results-table');
+  if (!container) return;
+
+  const vars = Object.keys(RESPONSE_LABELS);
+  const order = ['mmf_treasury_holdings', 'on_rrp_daily_total',
+    'commercial_bank_deposits_weekly_nsa', 'bank_treasury_and_agency_securities_weekly_nsa',
+    'reserve_balances_weekly_wednesday', 'dealer_treasury_repo'];
+
+  let html = `<table>
+    <thead><tr>
+      <th>Channel</th><th>Binary h=4 ($B)</th><th>t</th>
+      <th>Bill-Surprise h=4 ($B)</th><th>t</th>
+    </tr></thead><tbody>`;
+
+  for (const v of order) {
+    const bRow = data.find(r => r.response_var === v && r.shock_spec === 'binary' && r.horizon === 4);
+    const sRow = data.find(r => r.response_var === v && r.shock_spec === 'bill_surprise' && r.horizon === 4);
+    const label = RESPONSE_LABELS[v] || v;
+
+    const fmt = (r) => {
+      if (!r) return ['—', '—', false];
+      const sig = Math.abs(r.t_stat_nw) >= 1.96;
+      const sign = r.beta_bn >= 0 ? '+' : '';
+      return [`${sign}$${r.beta_bn.toFixed(0)}B`, r.t_stat_nw.toFixed(1), sig];
+    };
+    const [bBeta, bT, bSig] = fmt(bRow);
+    const [sBeta, sT, sSig] = fmt(sRow);
+
+    html += `<tr>
+      <td>${label}</td>
+      <td class="num${bSig ? ' sig' : ''}">${bBeta}</td>
+      <td class="num${bSig ? ' sig' : ''}">${bT}${bSig ? '*' : ''}</td>
+      <td class="num${sSig ? ' sig' : ''}">${sBeta}</td>
+      <td class="num${sSig ? ' sig' : ''}">${sT}${sSig ? '*' : ''}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+/* ====== 8. Regime-Split IRFs ====== */
+async function renderRegimeIRFs() {
+  const data = await fetch('data/local_projections.json').then(r => r.json());
+  if (!data || !data.length) return;
+  const container = document.getElementById('chart-regime-grid');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const regimeRows = data.filter(r => r.shock_spec === 'binary' && r.regime != null);
+  if (!regimeRows.length) return;
+
+  const regimes = [...new Set(regimeRows.map(r => r.regime))].sort();
+  const regimeColors = { 'on_rrp_abundant': '#22c55e', 'on_rrp_scarce': '#ef4444' };
+  const regimeLabels = { 'on_rrp_abundant': 'Abundant (≥$100B)', 'on_rrp_scarce': 'Scarce (<$100B)' };
+  const vars = Object.keys(RESPONSE_LABELS);
+
+  for (const v of vars) {
+    const div = document.createElement('div');
+    div.style.minHeight = '280px';
+    container.appendChild(div);
+
+    const traces = [];
+    for (const regime of regimes) {
+      const rows = regimeRows.filter(r => r.response_var === v && r.regime === regime)
+        .sort((a, b) => a.horizon - b.horizon);
+      if (!rows.length) continue;
+      const color = regimeColors[regime] || '#888';
+      const betaBn = rows.map(r => r.beta / 1000);
+      const ciUpBn = rows.map(r => (r.beta + 1.96 * r.se_nw) / 1000);
+      const ciLoBn = rows.map(r => (r.beta - 1.96 * r.se_nw) / 1000);
+
+      traces.push({
+        x: rows.map(r => r.horizon), y: betaBn,
+        type: 'scatter', mode: 'lines', name: regimeLabels[regime] || regime,
+        line: { color, width: 2 },
+        hovertemplate: `h=%{x}<br>β=$%{y:.1f}B<extra>${regimeLabels[regime] || regime}</extra>`,
+      });
+      traces.push({
+        x: [...rows.map(r => r.horizon), ...rows.map(r => r.horizon).reverse()],
+        y: [...ciUpBn, ...ciLoBn.reverse()],
+        type: 'scatter', fill: 'toself',
+        fillcolor: color.replace('#', '').replace(/(.{2})(.{2})(.{2})/, (_, r, g, b) =>
+          `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.1)`),
+        line: { color: 'transparent' }, showlegend: false, hoverinfo: 'skip',
+      });
+    }
+
+    Plotly.newPlot(div, traces, plotlyLayout(RESPONSE_LABELS[v], {
+      xaxis: { title: 'Weeks', dtick: 4 },
+      yaxis: { title: '' },
+      shapes: [{ type: 'line', x0: 0, x1: 0, y0: 0, y1: 1, yref: 'paper',
+                 line: { color: '#6b7280', width: 1, dash: 'dot' } }],
+      legend: { orientation: 'h', y: 1.12, font: { size: 10 } },
+      margin: { l: 50, r: 10, t: 40, b: 40 },
+      height: 280,
+    }), plotlyConfig(true));
+  }
+}
+
+/* ====== 9. Pre-trend Scorecard ====== */
 async function renderPretrends() {
   const data = await fetch('data/lp_comparison.json').then(r => r.json());
   const container = document.getElementById('pretrend-cards');
@@ -336,8 +488,11 @@ async function renderPretrends() {
 /* ====== Init ====== */
 async function init() {
   await Promise.all([
+    renderSummary(),
     renderTimeline(),
     renderIRFComparison(),
+    renderResultsTable(),
+    renderRegimeIRFs(),
     renderAttribution(),
     renderEraBars(),
     renderONRRP(),

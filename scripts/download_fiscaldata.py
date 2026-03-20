@@ -29,29 +29,56 @@ def main() -> None:
     base_url = source_cfg["base_url"]
     raw_dir = ensure_dir(settings.paths.raw / "fiscaldata")
     manifest: list[dict[str, object]] = []
+    required_failures: list[str] = []
 
     for key, meta in source_cfg.get("endpoints", {}).items():
         logger.info("Downloading FiscalData endpoint %s", key)
-        payload = fetch_paginated_endpoint(
-            session=session,
-            base_url=base_url,
-            endpoint_path=meta["path"],
-        )
-        destination = raw_dir / f"{key}.json"
-        write_json(payload, destination)
-        manifest.append(
-            {
-                "key": key,
-                "path": meta["path"],
-                "frequency": meta.get("frequency"),
-                "description": meta.get("description"),
-                "record_count": payload.get("record_count", 0),
-                "saved_to": str(destination),
-            }
-        )
+        required = bool(meta.get("required_for_mvp", False))
+        try:
+            payload = fetch_paginated_endpoint(
+                session=session,
+                base_url=base_url,
+                endpoint_path=meta["path"],
+            )
+            destination = raw_dir / f"{key}.json"
+            write_json(payload, destination)
+            manifest.append(
+                {
+                    "key": key,
+                    "path": meta["path"],
+                    "frequency": meta.get("frequency"),
+                    "description": meta.get("description"),
+                    "required_for_mvp": required,
+                    "record_count": payload.get("record_count", 0),
+                    "saved_to": str(destination),
+                    "status": "downloaded",
+                }
+            )
+        except Exception as exc:
+            manifest.append(
+                {
+                    "key": key,
+                    "path": meta["path"],
+                    "frequency": meta.get("frequency"),
+                    "description": meta.get("description"),
+                    "required_for_mvp": required,
+                    "record_count": 0,
+                    "saved_to": "",
+                    "status": f"failed: {exc}",
+                }
+            )
+            if required:
+                required_failures.append(key)
+                logger.error("Required FiscalData endpoint failed: %s", key)
+            else:
+                logger.warning("Optional FiscalData endpoint failed: %s (%s)", key, exc)
 
     write_json(manifest, raw_dir / "manifest.json")
     logger.info("Saved %s FiscalData payloads", len(manifest))
+    if required_failures:
+        raise RuntimeError(
+            f"Required FiscalData downloads failed: {', '.join(required_failures)}"
+        )
 
 
 if __name__ == "__main__":

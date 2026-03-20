@@ -334,10 +334,10 @@ td.num { font-family: var(--font-mono); text-align: right; }
 }
 
 @media (max-width: 900px) {
-  #chart-irf-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  #chart-irf-grid, #chart-regime-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 @media (max-width: 600px) {
-  #chart-irf-grid { grid-template-columns: 1fr !important; }
+  #chart-irf-grid, #chart-regime-grid { grid-template-columns: 1fr !important; }
 }
 
 /* === Footer === */

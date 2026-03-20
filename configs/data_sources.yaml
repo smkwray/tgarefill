@@ -5,38 +5,47 @@ fiscaldata:
       path: "/v1/accounting/dts/operating_cash_balance"
       frequency: "daily"
       description: "Daily Treasury Statement operating cash balance"
+      required_for_mvp: true
     dts_deposits_withdrawals_operating_cash:
       path: "/v1/accounting/dts/deposits_withdrawals_operating_cash"
       frequency: "daily"
       description: "Daily Treasury Statement deposits and withdrawals"
+      required_for_mvp: false
     dts_public_debt_transactions:
       path: "/v1/accounting/dts/public_debt_transactions"
       frequency: "daily"
       description: "Daily Treasury Statement public debt transactions"
+      required_for_mvp: false
     mts_table_1:
       path: "/v1/accounting/mts/mts_table_1"
       frequency: "monthly"
       description: "Monthly Treasury Statement summary of receipts and outlays"
+      required_for_mvp: false
     mts_table_4:
       path: "/v1/accounting/mts/mts_table_4"
       frequency: "monthly"
       description: "Monthly Treasury Statement receipts by source"
+      required_for_mvp: false
     mts_table_5:
       path: "/v1/accounting/mts/mts_table_5"
       frequency: "monthly"
       description: "Monthly Treasury Statement outlays by function"
+      required_for_mvp: false
     auctions_query:
       path: "/v1/accounting/od/auctions_query"
       frequency: "daily"
       description: "Auction results and issuance details"
+      required_for_mvp: true
     upcoming_auctions:
       path: "/v1/accounting/od/upcoming_auctions"
       frequency: "daily"
       description: "Upcoming auction schedule"
+      required_for_mvp: false
 
 fred:
   base_url: "https://fred.stlouisfed.org/graph/fredgraph.csv?id="
   config_file: "configs/fred_series.yaml"
+  required_for_mvp: true
 
 ofr:
   base_url: "https://data.financialresearch.gov/v1"
@@ -45,8 +54,10 @@ ofr:
     - "nypd"
     - "repo"
   metadata_query_file: "configs/stfm_queries.yaml"
+  required_for_mvp: false
 
 treasury_home:
   investor_class_page: "https://home.treasury.gov/data/investor-class-auction-allotments"
   tic_page: "https://home.treasury.gov/data/treasury-international-capital-tic-system-home-page/tic-forms-instructions/securities-b-portfolio-holdings-of-us-and-foreign-securities"
   refunding_page: "https://home.treasury.gov/policy-issues/financing-the-government/quarterly-refunding/most-recent-quarterly-refunding-documents"
+  required_for_mvp: false

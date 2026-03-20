@@ -27,26 +27,50 @@ def main() -> None:
     session = build_session()
 
     raw_dir = ensure_dir(settings.paths.raw / "fred")
-    manifest: list[dict[str, str]] = []
+    manifest: list[dict[str, str | bool]] = []
+    required_failures: list[str] = []
 
     for series_key, meta in settings.fred_series.get("series", {}).items():
         series_id = meta["id"]
         filename = f"{series_key}__{series_id}.csv"
         destination = raw_dir / filename
+        required = bool(meta.get("required_for_mvp", False))
         logger.info("Downloading FRED series %s (%s)", series_key, series_id)
-        download_series_csv(session, series_id, destination)
-        manifest.append(
-            {
-                "series_key": series_key,
-                "series_id": series_id,
-                "frequency": str(meta.get("frequency", "")),
-                "description": str(meta.get("description", "")),
-                "saved_to": str(destination),
-            }
-        )
+        try:
+            download_series_csv(session, series_id, destination)
+            manifest.append(
+                {
+                    "series_key": series_key,
+                    "series_id": series_id,
+                    "frequency": str(meta.get("frequency", "")),
+                    "description": str(meta.get("description", "")),
+                    "required_for_mvp": required,
+                    "saved_to": str(destination),
+                    "status": "downloaded",
+                }
+            )
+        except Exception as exc:
+            manifest.append(
+                {
+                    "series_key": series_key,
+                    "series_id": series_id,
+                    "frequency": str(meta.get("frequency", "")),
+                    "description": str(meta.get("description", "")),
+                    "required_for_mvp": required,
+                    "saved_to": "",
+                    "status": f"failed: {exc}",
+                }
+            )
+            if required:
+                required_failures.append(series_key)
+                logger.error("Required FRED series failed: %s", series_key)
+            else:
+                logger.warning("Optional FRED series failed: %s (%s)", series_key, exc)
 
     write_json(manifest, raw_dir / "manifest.json")
-    logger.info("Saved %s FRED series", len(manifest))
+    logger.info("Processed %s FRED series", len(manifest))
+    if required_failures:
+        raise RuntimeError(f"Required FRED downloads failed: {', '.join(required_failures)}")
 
 
 if __name__ == "__main__":

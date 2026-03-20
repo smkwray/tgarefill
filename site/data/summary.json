@@ -1,0 +1,32 @@
+{
+  "event_count": 51,
+  "bill_shock_sd_bn": 19.28,
+  "panel": {
+    "weekly_observations": 1068,
+    "variable_count": 27,
+    "start_date": "2005-10-05",
+    "end_date": "2026-03-18"
+  },
+  "headline_effects": {
+    "mmf_treasury_holdings": {
+      "beta_bn": 40.63,
+      "t_stat_nw": 3.44,
+      "significant_5pct": true
+    },
+    "on_rrp_daily_total": {
+      "beta_bn": -30.58,
+      "t_stat_nw": -4.98,
+      "significant_5pct": true
+    }
+  },
+  "pretrends": {
+    "binary": {
+      "significant_placebo_count": 12,
+      "channels_with_hits": 6
+    },
+    "bill_surprise": {
+      "significant_placebo_count": 1,
+      "channels_with_hits": 1
+    }
+  }
+}

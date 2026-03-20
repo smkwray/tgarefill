@@ -26,11 +26,12 @@ def build_bill_size_surprise(
     lookback: int = 8,
     min_history: int = 4,
     exclude_cmb: bool = True,
+    grouping: str = "term_reopening",
 ) -> pd.DataFrame:
-    """Weekly bill-size surprise: offering_amt minus trailing median for same term.
+    """Weekly bill-size surprise from trailing medians of comparable bill auctions.
 
     For each non-CMB bill auction, expected size = trailing median of the
-    last `lookback` auctions with the same (security_term, reopening) group.
+    last `lookback` auctions in the selected grouping.
     Surprise = offering_amt - expected. Aggregated to weekly (Wednesday).
 
     Returns DataFrame with columns: date, bill_size_surprise.
@@ -50,8 +51,14 @@ def build_bill_size_surprise(
     if bills.empty:
         return pd.DataFrame(columns=["date", "bill_size_surprise"])
 
-    # Group key for trailing median
-    bills["group"] = bills["security_term"].str.strip() + "_" + bills["reopening"].str.strip()
+    term = bills["security_term"].fillna("").astype(str).str.strip()
+    reopening = bills["reopening"].fillna("").astype(str).str.strip()
+    if grouping == "term_reopening":
+        bills["group"] = term + "_" + reopening
+    elif grouping == "term_only":
+        bills["group"] = term
+    else:
+        raise ValueError(f"Unsupported bill surprise grouping: {grouping}")
 
     # Compute trailing median per group
     surprises = []

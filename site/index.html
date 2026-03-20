@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Who Funds TGA Rebuilds?</title>
   <meta name="description" content="Empirical decomposition of Treasury General Account rebuild funding channels using auction-schedule surprise identification.">
+  <meta property="og:title" content="Who Funds TGA Rebuilds?">
+  <meta property="og:description" content="Auction-surprise identification of Treasury funding channels. MMFs + ON RRP absorb unexpected bill issuance.">
+  <meta property="og:image" content="https://smkwray.github.io/tgarefill/img/irf_binary_vs_bill_surprise.png">
+  <meta property="og:url" content="https://smkwray.github.io/tgarefill/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Who Funds TGA Rebuilds?">
+  <meta name="twitter:description" content="Auction-surprise identification of Treasury funding channels. MMFs + ON RRP absorb unexpected bill issuance.">
+  <meta name="twitter:image" content="https://smkwray.github.io/tgarefill/img/irf_binary_vs_bill_surprise.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
@@ -20,7 +29,7 @@
       <h1>Who Funds Treasury General Account Rebuilds?</h1>
       <p class="lede">
         When the U.S. Treasury rebuilds its cash balance, where does the money come from?
-        We identify 43 rapid rebuild episodes from 2005&ndash;2026 and use auction-schedule
+        We identify <span id="summary-event-count-inline">--</span> rapid rebuild episodes from 2005&ndash;2026 and use auction-schedule
         surprises to trace the causal funding channels. The answer: <strong>money market funds</strong>,
         drawing on the Fed's <strong>ON RRP facility</strong>.
       </p>
@@ -34,10 +43,10 @@
 
     <!-- ====== KEY STATS ====== -->
     <div class="stat-grid">
-      <div class="stat-card events"><div class="value">43</div><div class="label">Rebuild Events</div></div>
-      <div class="stat-card mmf"><div class="value">+$41B</div><div class="label">MMF Response (1-std, h=4)</div></div>
-      <div class="stat-card onrrp"><div class="value">&minus;$31B</div><div class="label">ON RRP Runoff (1-std, h=4)</div></div>
-      <div class="stat-card sig"><div class="value">5&rarr;0</div><div class="label">Pre-trends eliminated</div></div>
+      <div class="stat-card events"><div class="value" id="stat-events">--</div><div class="label">Rebuild Events</div></div>
+      <div class="stat-card mmf"><div class="value" id="stat-mmf">--</div><div class="label">MMF Response (1-std, h=4)</div></div>
+      <div class="stat-card onrrp"><div class="value" id="stat-onrrp">--</div><div class="label">ON RRP Runoff (1-std, h=4)</div></div>
+      <div class="stat-card sig"><div class="value" id="stat-pretrends">--</div><div class="label">Significant Placebos</div></div>
     </div>
 
     <div class="section-divider"></div>
@@ -57,7 +66,7 @@
       </p>
       <div id="chart-timeline" style="width:100%;height:420px;"></div>
       <p class="chart-caption">
-        Weekly TGA balance (DTS Wednesday close, $B) with 43 rebuild events shaded in orange.
+        Weekly TGA balance (DTS Wednesday close, $B) with <span id="summary-event-count-caption">--</span> rebuild events shaded in orange.
         Use the range slider to zoom into specific periods.
       </p>
     </section>
@@ -71,8 +80,9 @@
       <h3>1. Money Market Funds Are the Primary Absorbers</h3>
       <p>
         Using a bill-size surprise instrument (see <a href="#methods">Methods</a>), we find that
-        a one-standard-deviation ($19B) unexpected increase in weekly bill issuance causes
-        MMF Treasury holdings to rise by <strong>$41B over 4 weeks</strong> (t=3.4, Newey-West).
+        a one-standard-deviation (<span id="summary-bill-shock-sd">$--B</span>) unexpected increase in weekly bill issuance causes
+        MMF Treasury holdings to rise by <strong><span id="summary-mmf-effect">$--B over 4 weeks</span></strong>
+        (t=<span id="summary-mmf-tstat">--</span>, Newey-West).
       </p>
 
       <div class="callout finding">
@@ -96,23 +106,36 @@
         while strengthening MMF Treasury and ON RRP channels.
       </p>
 
-      <h3>3. Pre-Trend Scorecard</h3>
+      <h3>3. Bill-Surprise Results at h=4 Weeks (1-std shock = <span id="summary-results-shock">$--B</span>)</h3>
+      <div class="table-wrap" id="results-table"></div>
+      <p class="chart-caption">
+        * Significant at 5% with Newey-West HAC standard errors.
+        Binary shock is contaminated by pre-trends; bill-surprise is the clean specification.
+      </p>
+
+      <h3>4. Pre-Trend Scorecard</h3>
       <p>
         A clean shock should show no significant movement <em>before</em> it occurs.
-        The binary shock fails this test in 5 of 6 channels. The bill-surprise passes.
+        The binary shock shows significant placebo leads in
+        <span id="summary-binary-pretrend-channels">--</span> of 6 channels
+        (<span id="summary-binary-pretrend-total">--</span>/24 coefficients),
+        versus <span id="summary-bill-pretrend-channels">--</span> of 6
+        (<span id="summary-bill-pretrend-total">--</span>/24) for the bill-surprise specification.
       </p>
       <div id="pretrend-cards" class="pretrend-grid"></div>
 
-      <h3>4. Funding Channels Have Evolved Over Time</h3>
-      <p>The dominant funding channel has shifted across eras:</p>
+      <h3>5. Funding Channels Have Evolved Over Time</h3>
+      <p>Descriptive counts of the largest positive proxy contribution by era:</p>
       <div id="chart-era" style="width:100%;height:380px;"></div>
       <p class="chart-caption">
-        2009&ndash;2013: reserve-driven. 2014&ndash;2019: mixed reserves &amp; deposits. 2020&ndash;2022: diversified with ON RRP and MMF emerging.
+        Bars summarize the top positive proxy within each event window by shared era bins.
+        Treat these counts as descriptive accounting summaries, not structural identification.
       </p>
 
-      <h3>5. The ON RRP Buffer</h3>
+      <h3>6. The ON RRP Buffer</h3>
       <p>
-        ON RRP declines by <strong>$31B per 1-std shock</strong> (t=&minus;5.0).
+        ON RRP declines by <strong><span id="summary-onrrp-effect">$--B per 1-std shock</span></strong>
+        (t=<span id="summary-onrrp-tstat">--</span>).
         The mechanism: MMFs redeem ON RRP balances to buy bills, channeling money from
         the Fed's balance sheet to the TGA without touching bank deposits.
       </p>
@@ -120,6 +143,18 @@
       <p class="chart-caption">
         TGA (blue, left axis) and ON RRP (green, right axis) during the facility era. Orange bands = rebuild events.
       </p>
+
+      <h3>7. Regime-Split IRFs: ON RRP Abundant vs Scarce</h3>
+      <p>
+        When ON RRP holds &ge;$100B (green), rebuild shocks transmit differently than when the facility
+        is scarce (red). These are binary-shock IRFs split by regime &mdash; hover for exact values.
+      </p>
+      <div id="chart-regime-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
+      <p class="chart-caption">
+        Green = ON RRP abundant (&ge;$100B). Red = ON RRP scarce (&lt;$100B).
+        Pre-facility weeks excluded from estimation.
+      </p>
+
     </section>
 
     <div class="section-divider"></div>
@@ -128,7 +163,7 @@
     <section class="panel" id="events">
       <h2>Rebuild Events</h2>
       <p>
-        43 rapid TGA rebuild episodes detected using DTS Wednesday-close levels and
+        <span id="summary-event-count-events">--</span> rapid TGA rebuild episodes detected using DTS Wednesday-close levels and
         positive-only 90th percentile thresholds. Hover over events for details.
       </p>
       <div id="chart-events" style="width:100%;height:400px;"></div>
@@ -152,7 +187,10 @@
 
       <h3>Data Pipeline</h3>
       <p>
-        Weekly panel: 1,068 observations, 27 variables, 2005&ndash;2026. All values in millions of USD.
+        Weekly panel: <span id="summary-panel-obs">--</span> observations,
+        <span id="summary-panel-vars">--</span> variables,
+        <span id="summary-panel-start">----</span>&ndash;<span id="summary-panel-end">----</span>.
+        All values in millions of USD.
         TGA from DTS Wednesday closing balances (not FRED WTREGEN weekly average).
         H.8 series converted from billions. OFR monthly data forward-filled via <code>merge_asof</code>.
       </p>
@@ -182,8 +220,9 @@
       <h3>Auction-Schedule Surprise</h3>
       <div class="callout">
         <p>
-          <strong>surprise = offering_amt &minus; trailing_median</strong>(last 8 same-term auctions, min 4).
+          <strong>surprise = offering_amt &minus; trailing_median</strong>(last 8 same-term &times; reopening-status auctions, min 4).
           Summed to weekly. Tax-receipt surprise (DTS deposits) as control.
+          A same-term-only grouping is tracked separately as a robustness comparison.
           Strips ~94% of predictable auction supply.
         </p>
       </div>
@@ -193,7 +232,8 @@
         &Delta;y<sub>t+h</sub> = &alpha; + &beta;(h) &middot; shock<sub>t</sub> + &gamma; &middot; controls<sub>t</sub> + &epsilon;<sub>t+h</sub>
       </p>
       <p>
-        Controls: 2 shock lags, 1 response lag, 11 month dummies, tax-receipt surprise.
+        Baseline (binary shock): 2 shock lags, 1 response lag, 11 month dummies.
+        Bill-surprise specification adds a tax-receipt surprise control.
         Newey-West HAC SEs (bandwidth = horizon). Placebo tests at h=&minus;4 to h=&minus;1.
       </p>
 
@@ -234,7 +274,7 @@
         <li><strong>Issuance-specific.</strong> Does not capture tax receipts, coupon issuance, or spending.</li>
         <li><strong>Weekly frequency.</strong> May miss intra-week dynamics.</li>
         <li><strong>Shock persistence.</strong> Autocorrelation = 0.86. Long-horizon effects contaminated.</li>
-        <li><strong>NSA baseline.</strong> Month dummies partially control seasonality.</li>
+        <li><strong>NSA baseline.</strong> Month dummies control seasonality. SA sensitivity confirms no change in results.</li>
         <li><strong>Accounting overlap.</strong> Channels are not mutually exclusive.</li>
       </ul>
     </section>

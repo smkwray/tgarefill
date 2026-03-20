@@ -23,6 +23,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate committed site data
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("site/data/events.json")
+          data = json.loads(path.read_text())
+          if not isinstance(data, list):
+              raise SystemExit(f"{path} must contain a JSON array")
+
+          missing = [
+              item.get("event_id", f"index_{i}")
+              for i, item in enumerate(data)
+              if not isinstance(item, dict) or item.get("delta_tga_bn") is None
+          ]
+          if missing:
+              raise SystemExit(
+                  f"{path} contains null delta_tga_bn for {len(missing)} event(s): "
+                  + ", ".join(missing[:10])
+              )
+          PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

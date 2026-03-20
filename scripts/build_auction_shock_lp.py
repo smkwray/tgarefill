@@ -43,6 +43,66 @@ RESPONSE_VARS = [
 ]
 
 
+def _run_bill_surprise_lp(
+    panel: pd.DataFrame,
+    response_cols: list[str],
+    shock_col: str,
+    shock_lags: int,
+    response_lags: int,
+    add_month: bool,
+    placebo: int,
+    max_horizon: int,
+    regime_col: str | None = None,
+) -> pd.DataFrame:
+    return results_to_dataframe(
+        estimate_local_projections(
+            panel=panel,
+            shock_col=shock_col,
+            response_cols=response_cols,
+            min_horizon=-placebo,
+            max_horizon=max_horizon,
+            lags=shock_lags,
+            response_lags=response_lags,
+            add_month_dummies=add_month,
+            control_cols=["tax_receipt_surprise"],
+            regime_col=regime_col,
+        )
+    )
+
+
+def _build_grouping_comparison(
+    grouped_results: dict[str, tuple[pd.DataFrame, float]]
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for grouping, (lp_df, bill_shock_sd) in grouped_results.items():
+        placebo = lp_df[lp_df["horizon"] < 0]
+        placebo_hits = int(placebo["significant_5pct"].sum())
+        placebo_channels = int(
+            placebo.groupby("response_var")["significant_5pct"].any().sum()
+        )
+        h4 = lp_df[(lp_df["horizon"] == 4) & (lp_df["regime"].isna())]
+        for response_var, label in RESPONSE_VARS:
+            row = {
+                "grouping": grouping,
+                "response_var": response_var,
+                "response_label": label,
+                "bill_shock_sd_bn": round(bill_shock_sd / 1000, 4),
+                "placebo_significant_count": placebo_hits,
+                "placebo_channels_with_hits": placebo_channels,
+                "h4_effect_bn": None,
+                "h4_t_stat_nw": None,
+                "h4_significant_5pct": None,
+            }
+            sub = h4[h4["response_var"] == response_var]
+            if not sub.empty:
+                result = sub.iloc[0]
+                row["h4_effect_bn"] = round(float(result["beta"]) * bill_shock_sd / 1000, 4)
+                row["h4_t_stat_nw"] = round(float(result["t_stat_nw"]), 4)
+                row["h4_significant_5pct"] = bool(result["significant_5pct"])
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     configure_logging()
     settings = get_settings()
@@ -53,8 +113,13 @@ def main() -> None:
     dts_dw = pd.read_parquet(settings.paths.staging / "fiscaldata" / "dts_deposits_withdrawals_operating_cash.parquet")
 
     # Build shocks
-    bill_surprise = build_bill_size_surprise(auctions)
+    bill_surprise = build_bill_size_surprise(auctions, grouping="term_reopening")
     logger.info("Bill-size surprise: %s weeks with nonzero values", (bill_surprise["bill_size_surprise"] != 0).sum())
+    bill_surprise_term_only = build_bill_size_surprise(auctions, grouping="term_only")
+    logger.info(
+        "Bill-size surprise (term only): %s weeks with nonzero values",
+        (bill_surprise_term_only["bill_size_surprise"] != 0).sum(),
+    )
 
     cmb_shock = build_short_notice_cmb(auctions)
     logger.info("Short-notice CMB: %s weeks with positive values", (cmb_shock["short_notice_issuance"] > 0).sum())
@@ -64,15 +129,28 @@ def main() -> None:
 
     # Merge into panel
     panel = panel.merge(bill_surprise, on="date", how="left")
+    panel = panel.merge(
+        bill_surprise_term_only.rename(
+            columns={"bill_size_surprise": "bill_size_surprise_term_only"}
+        ),
+        on="date",
+        how="left",
+    )
     panel = panel.merge(cmb_shock, on="date", how="left")
     panel = panel.merge(tax_surprise, on="date", how="left")
 
     # Fill missing shocks with 0 (no auction that week = no surprise)
-    for col in ["bill_size_surprise", "short_notice_issuance", "tax_receipt_surprise"]:
+    for col in [
+        "bill_size_surprise",
+        "bill_size_surprise_term_only",
+        "short_notice_issuance",
+        "tax_receipt_surprise",
+    ]:
         panel[col] = panel[col].fillna(0)
 
     panel["regime"] = classify_regime(panel)
     bill_shock_sd = float(panel["bill_size_surprise"].std())
+    bill_shock_sd_term_only = float(panel["bill_size_surprise_term_only"].std())
 
     response_cols = [col for col, _ in RESPONSE_VARS]
     lp_cfg = settings.analysis.get("local_projections", {})
@@ -113,36 +191,47 @@ def main() -> None:
 
     # === Bill-size surprise LP ===
     logger.info("Running bill-size surprise LP...")
-    bill_lp = results_to_dataframe(estimate_local_projections(
+    bill_lp = _run_bill_surprise_lp(
         panel=panel,
         shock_col="bill_size_surprise",
         response_cols=response_cols,
-        min_horizon=-placebo,
-        max_horizon=max_horizon,
-        lags=shock_lags,
+        shock_lags=shock_lags,
         response_lags=response_lags,
-        add_month_dummies=add_month,
-        control_cols=["tax_receipt_surprise"],
-    ))
+        add_month=add_month,
+        placebo=placebo,
+        max_horizon=max_horizon,
+    )
     bill_lp["shock_spec"] = "bill_surprise"
     logger.info("Bill-surprise LP: %s results, %s significant",
                 len(bill_lp), bill_lp["significant_5pct"].sum())
 
     # === Bill-size surprise LP with regime split ===
     logger.info("Running bill-size surprise LP (regime split)...")
-    bill_regime_lp = results_to_dataframe(estimate_local_projections(
+    bill_regime_lp = _run_bill_surprise_lp(
         panel=panel,
         shock_col="bill_size_surprise",
         response_cols=response_cols,
-        min_horizon=-placebo,
-        max_horizon=max_horizon,
-        lags=shock_lags,
+        shock_lags=shock_lags,
         response_lags=response_lags,
-        add_month_dummies=add_month,
-        control_cols=["tax_receipt_surprise"],
+        add_month=add_month,
+        placebo=placebo,
+        max_horizon=max_horizon,
         regime_col="regime",
-    ))
+    )
     bill_regime_lp["shock_spec"] = "bill_surprise"
+
+    logger.info("Running bill-size surprise LP (term-only robustness)...")
+    bill_lp_term_only = _run_bill_surprise_lp(
+        panel=panel,
+        shock_col="bill_size_surprise_term_only",
+        response_cols=response_cols,
+        shock_lags=shock_lags,
+        response_lags=response_lags,
+        add_month=add_month,
+        placebo=placebo,
+        max_horizon=max_horizon,
+    )
+    bill_lp_term_only["shock_spec"] = "bill_surprise_term_only"
 
     # === Short-notice CMB LP (robustness) ===
     logger.info("Running short-notice CMB LP...")
@@ -162,9 +251,23 @@ def main() -> None:
                 len(cmb_lp), cmb_lp["significant_5pct"].sum())
 
     # Save results
-    combined = pd.concat([bill_lp, bill_regime_lp, cmb_lp], ignore_index=True)
+    combined = pd.concat([binary_lp, bill_lp, bill_regime_lp, cmb_lp], ignore_index=True)
     write_dataframe(combined, settings.paths.processed / "auction_shock_lp.parquet")
     write_dataframe(combined, settings.paths.output_tables / "auction_shock_lp.csv")
+    grouping_comparison = _build_grouping_comparison(
+        {
+            "term_reopening": (bill_lp, bill_shock_sd),
+            "term_only": (bill_lp_term_only, bill_shock_sd_term_only),
+        }
+    )
+    write_dataframe(
+        grouping_comparison,
+        settings.paths.processed / "auction_shock_grouping_comparison.parquet",
+    )
+    write_dataframe(
+        grouping_comparison,
+        settings.paths.output_tables / "auction_shock_grouping_comparison.csv",
+    )
 
     # === Compare pre-trends: binary vs bill-surprise ===
     labels = {col: label for col, label in RESPONSE_VARS}

@@ -50,20 +50,36 @@ def build_dts_wednesday_tga(staging_dir: Path) -> pd.DataFrame:
     if acct_col is None:
         return pd.DataFrame(columns=["date", "tga_dts_wednesday"])
 
-    # Filter to TGA-relevant accounts
+    # Filter to TGA-relevant accounts.
+    # Pre-April 2022: account_type = "Federal Reserve Account" or
+    #   "Treasury General Account (TGA)", balance in close_today_bal.
+    # Post-April 2022: separate "Closing Balance" / "Opening Balance" rows,
+    #   balance in open_today_bal (close_today_bal is null).
     mask = df[acct_col].str.contains(
         "Federal Reserve|Treasury General Account", case=False, na=False
     )
-    tga = df[mask].copy()
+    # Exclude opening-balance and deposit/withdrawal subtotal rows
+    exclude = df[acct_col].str.contains(
+        "Opening Balance|Deposits|Withdrawals", case=False, na=False
+    )
+    tga = df[mask & ~exclude].copy()
 
     # Parse date and balance
     date_col = "record_date" if "record_date" in tga.columns else tga.columns[0]
-    bal_col = "close_today_bal" if "close_today_bal" in tga.columns else None
-    if bal_col is None:
+    tga["date"] = pd.to_datetime(tga[date_col], errors="coerce")
+
+    # Unify balance column across schemas
+    if "close_today_bal" in tga.columns and "open_today_bal" in tga.columns:
+        close_vals = coerce_numeric(tga["close_today_bal"])
+        open_vals = coerce_numeric(tga["open_today_bal"])
+        tga["tga_dts_wednesday"] = close_vals.fillna(open_vals)
+    elif "close_today_bal" in tga.columns:
+        tga["tga_dts_wednesday"] = coerce_numeric(tga["close_today_bal"])
+    elif "open_today_bal" in tga.columns:
+        tga["tga_dts_wednesday"] = coerce_numeric(tga["open_today_bal"])
+    else:
         return pd.DataFrame(columns=["date", "tga_dts_wednesday"])
 
-    tga["date"] = pd.to_datetime(tga[date_col], errors="coerce")
-    tga["tga_dts_wednesday"] = coerce_numeric(tga[bal_col])
     tga = tga.dropna(subset=["date", "tga_dts_wednesday"])
 
     # Anchor each week to Wednesday, falling back to the latest prior business day

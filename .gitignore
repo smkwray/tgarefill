@@ -42,6 +42,9 @@ do/
 # internal planning docs
 AGENTS.md
 PLAN.md
+PLAN*.md
+plan*.md
+*plan.md
 ROADMAP.md
 DATA_SOURCES.md
 docs/original_guide.md
@@ -49,6 +52,17 @@ docs/codex-bootstrap.md
 docs/architecture.md
 docs/mvp-definition.md
 docs/public-repo-notes.md
+changes.md
+handoff.md
+todo.md
+dontdo.md
+memory-system.md
+mako.md
+orca.md
+tandy.md
+dairy.md
+gptpro.md
+spark*.md
 
 # logs and delegate outputs
 logs/

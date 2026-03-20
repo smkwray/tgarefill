@@ -10,7 +10,6 @@ if str(SRC) not in sys.path:
 
 import json
 import logging
-from pathlib import Path
 
 import pandas as pd
 
@@ -35,21 +34,64 @@ from tgarefill.utils.files import (
 logger = logging.getLogger(__name__)
 
 
+def _required_fred_series(settings) -> set[str]:
+    series = settings.fred_series.get("series", {})
+    return {
+        series_key
+        for series_key, meta in series.items()
+        if bool(meta.get("required_for_mvp", False))
+    }
+
+
+def _required_fiscaldata_endpoints(settings) -> set[str]:
+    endpoints = settings.data_sources.get("fiscaldata", {}).get("endpoints", {})
+    return {
+        endpoint_key
+        for endpoint_key, meta in endpoints.items()
+        if bool(meta.get("required_for_mvp", False))
+    }
+
+
 def stage_fred(settings) -> list[dict[str, str]]:
     raw_dir = settings.paths.raw / "fred"
     staging_dir = ensure_dir(settings.paths.staging / "fred")
     manifest: list[dict[str, str]] = []
     frames: list[pd.DataFrame] = []
+    skipped = 0
+    missing_required: list[str] = []
+    empty_required: list[str] = []
+    required_series = _required_fred_series(settings)
 
     for series_key, meta in settings.fred_series.get("series", {}).items():
         series_id = meta["id"]
         raw_path = raw_dir / f"{series_key}__{series_id}.csv"
+        required = series_key in required_series
         if not raw_path.exists():
-            logger.warning("Missing FRED raw file: %s", raw_path)
+            if required:
+                missing_required.append(series_key)
+                logger.error("Missing required FRED raw file: %s", raw_path)
+            else:
+                logger.warning("Missing FRED raw file: %s", raw_path)
+            skipped += 1
             continue
         df = load_series_csv(raw_path, series_key=series_key, series_id=series_id)
+        if df.empty:
+            if required:
+                empty_required.append(series_key)
+                logger.error("Required FRED raw file has no rows: %s", raw_path)
+            else:
+                logger.warning("Optional FRED raw file has no rows: %s", raw_path)
+                skipped += 1
+            continue
         frames.append(df)
-        manifest.append({"series_key": series_key, "series_id": series_id, "rows": str(len(df))})
+        manifest.append(
+            {
+                "series_key": series_key,
+                "series_id": series_id,
+                "rows": str(len(df)),
+                "required_for_mvp": str(required),
+            }
+        )
 
     fred_long = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(
         columns=["date", "value", "series_key", "series_id"]
@@ -63,6 +105,12 @@ def stage_fred(settings) -> list[dict[str, str]]:
         fred_wide = pd.DataFrame(columns=["date"])
     write_dataframe(fred_wide, staging_dir / "fred_wide.parquet")
     write_json(manifest, staging_dir / "manifest.json")
+    logger.info("FRED staging: %s series staged, %s skipped", len(manifest), skipped)
+    failures = missing_required + empty_required
+    if failures:
+        raise RuntimeError(
+            f"Required FRED staging inputs missing or empty: {', '.join(sorted(failures))}"
+        )
     return manifest
 
 
@@ -70,19 +118,49 @@ def stage_fiscaldata(settings) -> list[dict[str, str]]:
     raw_dir = settings.paths.raw / "fiscaldata"
     staging_dir = ensure_dir(settings.paths.staging / "fiscaldata")
     manifest: list[dict[str, str]] = []
+    skipped = 0
+    missing_required: list[str] = []
+    empty_required: list[str] = []
+    endpoints = settings.data_sources.get("fiscaldata", {}).get("endpoints", {})
 
-    for path in sorted(raw_dir.glob("*.json")):
-        if path.name == "manifest.json":
+    for key, meta in endpoints.items():
+        path = raw_dir / f"{key}.json"
+        required = bool(meta.get("required_for_mvp", False))
+        if not path.exists():
+            if required:
+                missing_required.append(key)
+                logger.error("Missing required FiscalData raw file: %s", path)
+            else:
+                logger.warning("Missing FiscalData raw file: %s", path)
+                skipped += 1
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
         df = payload_to_frame(payload)
         if df.empty:
-            logger.warning("No records parsed for FiscalData payload %s", path.name)
+            if required:
+                empty_required.append(key)
+                logger.error("Required FiscalData payload parsed to zero rows: %s", path.name)
+            else:
+                logger.warning("No records parsed for FiscalData payload %s", path.name)
+                skipped += 1
             continue
         write_dataframe(df, staging_dir / f"{path.stem}.parquet")
-        manifest.append({"source_file": path.name, "rows": str(len(df))})
+        manifest.append(
+            {
+                "source_file": path.name,
+                "rows": str(len(df)),
+                "required_for_mvp": str(required),
+            }
+        )
 
     write_json(manifest, staging_dir / "manifest.json")
+    logger.info("FiscalData staging: %s files staged, %s skipped", len(manifest), skipped)
+    failures = missing_required + empty_required
+    if failures:
+        raise RuntimeError(
+            "Required FiscalData staging inputs missing or empty: "
+            + ", ".join(sorted(failures))
+        )
     return manifest
 
 
@@ -125,6 +203,7 @@ def stage_ofr(settings) -> list[dict[str, str]]:
                 manifest.append({"source_file": path.name, "kind": "metadata", "frame": frame_name, "rows": str(len(df))})
 
     write_json(manifest, staging_dir / "manifest.json")
+    logger.info("OFR staging: %s items staged", len(manifest))
     return manifest
 
 
@@ -132,6 +211,7 @@ def stage_treasury_home(settings) -> list[dict[str, str]]:
     raw_root = settings.paths.raw / "treasury_home"
     staging_root = ensure_dir(settings.paths.staging / "treasury_home")
     manifest: list[dict[str, str]] = []
+    skipped = 0
 
     # investor-class excel files
     investor_dir = raw_root / "investor_class"
@@ -144,6 +224,7 @@ def stage_treasury_home(settings) -> list[dict[str, str]]:
                 sheets = read_excel_best_effort(path)
             except Exception as exc:
                 logger.warning("Failed to parse investor-class workbook %s: %s", path.name, exc)
+                skipped += 1
                 continue
             for sheet_name, df in sheets.items():
                 # Coerce object columns to string to prevent mixed-type parquet errors
@@ -173,6 +254,7 @@ def stage_treasury_home(settings) -> list[dict[str, str]]:
                 df = read_tic_table(path)
             if df is None or df.empty:
                 logger.warning("Could not parse TIC file %s with any method", path.name)
+                skipped += 1
                 continue
             # Coerce object columns to string for safe parquet write
             for col in df.columns:
@@ -187,6 +269,7 @@ def stage_treasury_home(settings) -> list[dict[str, str]]:
             manifest.append({"source_file": path.name, "rows": str(len(df))})
 
     write_json(manifest, staging_root / "manifest.json")
+    logger.info("Treasury staging: %s items staged, %s skipped", len(manifest), skipped)
     return manifest
 
 
