@@ -1,0 +1,202 @@
+{
+  "schema_version": "tgarefill.open07.producer-receipt.v1",
+  "receipt_id": "tgarefill-open07-20260731",
+  "issued_at_utc": "2026-07-31T14:01:37.383Z",
+  "project": {
+    "name": "tgarefill",
+    "repository": "https://github.com/smkwray/tgarefill.git",
+    "branch": "main",
+    "producer_commit": "9855ce5b32aba033dba0be520ece0991e61b57cc",
+    "producer_commit_author_date": "2026-07-31T06:55:04-07:00",
+    "producer_commit_date": "2026-07-31T06:55:04-07:00",
+    "producer_commit_subject": "Bind canonical TGA refill shock and robustness sample"
+  },
+  "claim_boundary": {
+    "status": "aggregate_funding_association_only",
+    "admitted": "Unexpected bill-funded TGA rebuild episodes are associated with higher MMF Treasury holdings and ON RRP runoff in the promoted aggregate weekly evidence.",
+    "excluded": [
+      "household behavior",
+      "a general bill-deposit substitution law",
+      "exact final-owner tracing",
+      "bank-deposit pass-through",
+      "an unrestricted causal mechanism"
+    ]
+  },
+  "generation": {
+    "command": "python -B scripts/build_auction_shock_lp.py",
+    "working_directory": "repository root",
+    "shock": {
+      "canonical_column": "bill_size_surprise",
+      "construction": "For each non-CMB bill auction, offering amount minus the trailing median of the prior eight auctions in the same security-term and reopening group, requiring four prior observations; aggregate to Wednesday-ending issue weeks.",
+      "timing": "issue_week",
+      "shock_unit": "millions of nominal U.S. dollars",
+      "announcement_timing_robustness_column": "bill_size_surprise_announcement_week"
+    },
+    "estimator": {
+      "type": "Jorda-style weekly local projection estimated by OLS",
+      "dependent_variable": "cumulative response change from t to t+h for positive horizons and the corresponding pre-shock change for negative placebo horizons",
+      "horizons_weeks": [-4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "shock_lags": 2,
+      "response_lags": 1,
+      "controls": ["tax_receipt_surprise", "calendar-month indicators"],
+      "inference": "Newey-West HAC with maxlags=max(horizon, 1); two-sided 5 percent significance uses |t| >= 1.96"
+    },
+    "samples": [
+      {
+        "label": "canonical_pre_rmp_through_2025_11",
+        "panel_first_week": "2005-10-05",
+        "panel_last_week": "2025-11-26",
+        "cutoff": "2025-11-30",
+        "rmp_regime_start": "2025-12-01",
+        "role": "promoted canonical issue-week sample"
+      },
+      {
+        "label": "same_week_timing_canonical_pre_rmp",
+        "panel_first_week": "2005-10-05",
+        "panel_last_week": "2025-11-26",
+        "cutoff": "2025-11-30",
+        "role": "announcement-week timing robustness"
+      },
+      {
+        "label": "extended_through_latest_with_post_rmp_labeled",
+        "panel_first_week": "2005-10-05",
+        "panel_last_week": "2026-03-18",
+        "role": "through-latest robustness only"
+      }
+    ],
+    "units": {
+      "response_levels_and_changes": "millions of nominal U.S. dollars",
+      "continuous_lp_beta": "millions of response dollars per one million dollars of bill-size surprise",
+      "promotion_h4_effect_bn": "billions of response dollars at h=4 per one within-sample standard deviation of the specified bill-size surprise",
+      "promotion_shock_sd_bn": "billions of nominal U.S. dollars",
+      "horizon": "weeks"
+    }
+  },
+  "runtime_used_for_commit_backed_verification": {
+    "python": "3.11.0",
+    "pandas": "3.0.1",
+    "numpy": "2.4.3",
+    "statsmodels": "0.14.6",
+    "scipy": "1.17.1",
+    "pyarrow": "23.0.1",
+    "matplotlib": "3.10.8"
+  },
+  "generating_surface": [
+    {"path": "scripts/build_auction_shock_lp.py", "sha256": "aff297a7846b3e234fb97517c8c250a528426f3f17a1ce0702af1a651ce9054a"},
+    {"path": "src/tgarefill/analytics/auction_shocks.py", "sha256": "ce69f0effee00371e807eec4a46a7ef680d3d1b5d24c7f58eb2e828c1898c92a"},
+    {"path": "src/tgarefill/analytics/events.py", "sha256": "9a92734a607d730d1099b5df997715f18ef202dc02f5867ac1b0afb3df19634f"},
+    {"path": "src/tgarefill/analytics/local_projections.py", "sha256": "258c222806e6601af4575f9c7348569ddf9fb7c95acaa78a5622379e0bb9f179"},
+    {"path": "src/tgarefill/logging_utils.py", "sha256": "9ed13d593606e0f8d51fee1a942ab8c0343830f489b58474c355c7d75a06f031"},
+    {"path": "src/tgarefill/settings.py", "sha256": "82f31df5193ee5243ef5c38f3b82f975bca74f82cfe085292cdc21b25e477b94"},
+    {"path": "src/tgarefill/utils/files.py", "sha256": "0b24fe631c21b22920d1ca2aa6d1d38a6f64bd9eea2c726a1889243b3f36a05c"},
+    {"path": "configs/analysis.yaml", "sha256": "82f397000a86b0f45c435efe7910b9aaf0e8ee929cb1fb09b06e375d72fa57e0"},
+    {"path": "configs/episode_rules.yaml", "sha256": "1a18b46e66a8e9b47d2137dad10cdf1b8216f0c75d1d6e3035611ce2b4468414"},
+    {"path": "configs/data_sources.yaml", "sha256": "999a0171b9d88d1b9e2eb369cf5ff9b18d26580018d49bde4c75c8e620209875"},
+    {"path": "configs/fred_series.yaml", "sha256": "1a14862296fc2e9d93daf6d5b1fcfde2e3f681a2a9a35ee09fb14a4de21f3178"},
+    {"path": "configs/stfm_queries.yaml", "sha256": "f1d33220ab819d779312e59b66edfdea3a1fc4593e4e6be80bf3ede9b11eb11e"},
+    {"path": "pyproject.toml", "sha256": "18a7ecefc9d1c30febff8bae49cc0cf8df71a1a1993a8eeb0558daabedc7e831"}
+  ],
+  "inputs": [
+    {
+      "role": "canonical weekly response panel",
+      "path": "data/processed/master_weekly_panel.parquet",
+      "sha256": "f81b7a17393f6b89edeb25e7327a78ce764333282b79499e90ccb6fff9ad52fc",
+      "size_bytes": 178562,
+      "rows": 1068,
+      "date_column": "date",
+      "first_date": "2005-10-05",
+      "last_date": "2026-03-18"
+    },
+    {
+      "role": "official FiscalData auction observations",
+      "path": "data/staging/fiscaldata/auctions_query.parquet",
+      "sha256": "71cebe9eb6b515970c567b0da944ab9adfc59a3f7a61f5aaacdcdf8929cd1dc8",
+      "size_bytes": 1985932,
+      "rows": 10897,
+      "date_column": "issue_date",
+      "first_date": "1979-11-15",
+      "last_date": "2026-03-31",
+      "effective_shock_start": "2005-01-01"
+    },
+    {
+      "role": "official FiscalData Daily Treasury Statement deposits",
+      "path": "data/staging/fiscaldata/dts_deposits_withdrawals_operating_cash.parquet",
+      "sha256": "d57368e1a7f76a42feceff8096e0d04688989cc9d160f63053b8067be852d887",
+      "size_bytes": 4063843,
+      "rows": 459429,
+      "date_column": "record_date",
+      "first_date": "2005-10-03",
+      "last_date": "2026-03-12"
+    }
+  ],
+  "retained_artifacts": [
+    {
+      "role": "canonical bill-supply shock",
+      "path": "outputs/tables/canonical_bill_surprise_shocks.csv",
+      "sha256": "5684fcda9ea7f1407b4ea4fcad020f49a6feac5daab9ed4cb3b3d88ec019b1cf",
+      "size_bytes": 120233,
+      "rows": 1052,
+      "first_date": "2005-10-05",
+      "last_date": "2025-11-26",
+      "nonzero_issue_week_shocks": 939,
+      "nonzero_announcement_week_shocks": 935,
+      "retained_file_mtime_utc": "2026-05-05T22:07:38.001Z"
+    },
+    {
+      "role": "local-projection output",
+      "path": "outputs/tables/auction_shock_lp.csv",
+      "sha256": "0921a0bd13f530418d2409af50d45920449e7de66c68c58dc349545ef81ae4d7",
+      "size_bytes": 197183,
+      "rows": 672,
+      "row_count_by_shock_spec": {
+        "bill_surprise": 288,
+        "bill_surprise_announcement_week": 96,
+        "bill_surprise_extended_latest": 96,
+        "binary_with_tax_control": 96,
+        "short_notice_cmb": 96
+      },
+      "retained_file_mtime_utc": "2026-05-05T22:07:39.596Z"
+    },
+    {
+      "role": "promoted robustness summary",
+      "path": "outputs/tables/promotion_robustness_summary.csv",
+      "sha256": "ad94ffcb50426ad68054183664d44f7d0ec2c36048cbd219db2083c313116834",
+      "size_bytes": 2971,
+      "rows": 18,
+      "specs": ["canonical_issue_week", "same_week_announcement_timing", "extended_latest"],
+      "retained_file_mtime_utc": "2026-05-05T22:07:39.616Z"
+    }
+  ],
+  "promoted_canonical_h4": [
+    {"response_var": "reserve_balances_weekly_wednesday", "response_label": "Reserves", "shock_sd_bn": 18.7735, "h4_effect_bn": -1.8491, "h4_t_stat_nw": -0.1705, "h4_significant_5pct": false},
+    {"response_var": "commercial_bank_deposits_weekly_nsa", "response_label": "Bank Deposits", "shock_sd_bn": 18.7735, "h4_effect_bn": 6.9409, "h4_t_stat_nw": 0.5753, "h4_significant_5pct": false},
+    {"response_var": "on_rrp_daily_total", "response_label": "ON RRP", "shock_sd_bn": 18.7735, "h4_effect_bn": -30.3713, "h4_t_stat_nw": -4.9869, "h4_significant_5pct": true},
+    {"response_var": "bank_treasury_and_agency_securities_weekly_nsa", "response_label": "Bank T&A Holdings", "shock_sd_bn": 18.7735, "h4_effect_bn": 3.0499, "h4_t_stat_nw": 1.2007, "h4_significant_5pct": false},
+    {"response_var": "mmf_treasury_holdings", "response_label": "MMF Treasury Holdings", "shock_sd_bn": 18.7735, "h4_effect_bn": 44.1243, "h4_t_stat_nw": 3.8228, "h4_significant_5pct": true},
+    {"response_var": "dealer_treasury_repo", "response_label": "Dealer Treasury Repo", "shock_sd_bn": 18.7735, "h4_effect_bn": -1.0158, "h4_t_stat_nw": -0.1851, "h4_significant_5pct": false}
+  ],
+  "reproduction": {
+    "verified_at_utc": "2026-07-31T13:55:55Z",
+    "command": "uv run --frozen --extra dev python -B scripts/build_auction_shock_lp.py",
+    "exit_code": 0,
+    "generated_sha256_before_restoring_retained_bytes": {
+      "outputs/tables/canonical_bill_surprise_shocks.csv": "8b54b63b8e69426b882541c48924602b267b18ecdab075f39a5cb82a7e9b0b74",
+      "outputs/tables/auction_shock_lp.csv": "12710182c99767d8a0c604c9e9eb76e0b34009055e0adb5454497dc105f23238",
+      "outputs/tables/promotion_robustness_summary.csv": "049b619a3a358c20891509a5ef2205541a40af8d34def21bb25b98fe533c9861"
+    },
+    "semantic_comparison_to_retained": {
+      "canonical_shock_dataframe_exact": true,
+      "promotion_summary_dataframe_exact": true,
+      "lp_columns_rows_metadata_n_obs_and_significance_exact": true,
+      "lp_max_absolute_beta_difference": 0.00010715992539189756,
+      "lp_max_absolute_se_nw_difference": 0.0009894748436636291,
+      "lp_max_absolute_t_stat_nw_difference": 4.559240118773289e-08,
+      "interpretation": "The fresh Windows run reproduced the retained scientific content. Byte hashes differ because CSV serialization and platform numerical libraries are not byte-identical; the exact retained bytes and hashes above remain canonical."
+    },
+    "retained_bytes_restored_after_comparison": true
+  },
+  "verification": {
+    "command": "python -B scripts/verify_open07_receipt.py",
+    "behavior": "Fail closed if the receipt, producer commit, committed generating surface, retained artifacts, exact input hashes, schemas, sample labels, dates, row counts, promoted h=4 values, or claim boundary do not match."
+  }
+}

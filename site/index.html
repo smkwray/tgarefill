@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Who Funds TGA Rebuilds?</title>
-  <meta name="description" content="Empirical decomposition of Treasury General Account rebuild funding channels using auction-schedule surprise identification.">
+  <meta name="description" content="Empirical decomposition of Treasury General Account rebuild funding channels using bill offering-size innovations.">
   <meta property="og:title" content="Who Funds TGA Rebuilds?">
-  <meta property="og:description" content="Auction-surprise identification of Treasury funding channels. MMFs + ON RRP absorb unexpected bill issuance.">
+  <meta property="og:description" content="Aggregate funding associations: MMF Treasury holdings and ON RRP around bill offering-size innovations.">
   <meta property="og:image" content="https://smkwray.github.io/tgarefill/img/irf_binary_vs_bill_surprise.png">
   <meta property="og:url" content="https://smkwray.github.io/tgarefill/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Who Funds TGA Rebuilds?">
-  <meta name="twitter:description" content="Auction-surprise identification of Treasury funding channels. MMFs + ON RRP absorb unexpected bill issuance.">
+  <meta name="twitter:description" content="Aggregate funding associations: MMF Treasury holdings and ON RRP around bill offering-size innovations.">
   <meta name="twitter:image" content="https://smkwray.github.io/tgarefill/img/irf_binary_vs_bill_surprise.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,8 +30,8 @@
       <p class="lede">
         When the U.S. Treasury rebuilds its cash balance, where does the money come from?
         We identify <span id="summary-event-count-inline">--</span> rapid rebuild episodes from 2005&ndash;2026 and use auction-schedule
-        surprises to trace the causal funding channels. The answer: <strong>money market funds</strong>,
-        drawing on the Fed's <strong>ON RRP facility</strong>.
+        innovations to study aggregate funding associations, including <strong>money market funds</strong>
+        and the Fed's <strong>ON RRP facility</strong>.
       </p>
       <div class="hero-buttons">
         <a href="#findings" class="btn btn-primary">Key Findings</a>
@@ -75,42 +75,43 @@
 
     <!-- ====== KEY FINDINGS ====== -->
     <section class="panel" id="findings">
-      <h2>Key Findings</h2>
+      <h2>Exploratory Findings</h2>
+      <p>This interactive display retains an exploratory specification. Its numerical results are separate from the canonical pre-December-2025 estimates described in the repository README. Monthly MMF data are carried into a weekly panel; the charts do not observe weekly MMF transactions.</p>
 
-      <h3>1. Money Market Funds Are the Primary Absorbers</h3>
+      <h3>1. MMF Treasury Holdings Rise Around Bill-Size Innovations</h3>
       <p>
-        Using a bill-size surprise instrument (see <a href="#methods">Methods</a>), we find that
-        a one-standard-deviation (<span id="summary-bill-shock-sd">$--B</span>) unexpected increase in weekly bill issuance causes
+        Using a bill offering-size innovation (see <a href="#methods">Methods</a>), we find that
+        a one-standard-deviation (<span id="summary-bill-shock-sd">$--B</span>) increase in the bill-size innovation is associated with
         MMF Treasury holdings to rise by <strong><span id="summary-mmf-effect">$--B over 4 weeks</span></strong>
         (t=<span id="summary-mmf-tstat">--</span>, Newey-West).
       </p>
 
       <div class="callout finding">
         <p>
-          <strong>Central result:</strong> Unexpected bill issuance that rebuilds the TGA is primarily funded
-          by money market funds, with ~75% of the MMF absorption sourced from ON RRP runoff.
-          Bank deposits, reserves, and bank Treasury holdings show no significant causal response.
+          <strong>Interpretation:</strong> MMF Treasury holdings rise and ON RRP declines around larger bill-size innovations.
+          These overlapping channel coefficients do not identify funding shares or household behavior.
+          Statistically insignificant bank outcomes do not establish an absence of bank involvement.
         </p>
       </div>
 
       <h3>2. Impulse Responses: Binary vs Bill-Size Surprise</h3>
       <p>
         The interactive charts below compare impulse response functions from two shock specifications.
-        <strong style="color:var(--accent);">Blue = binary shock</strong> (contaminated by pre-trends).
-        <strong style="color:var(--bank-ta);">Red = bill-size surprise</strong> (clean identification).
+        <strong style="color:var(--accent);">Blue = binary shock</strong> (with significant placebo leads).
+        <strong style="color:var(--bank-ta);">Red = bill-size surprise</strong> (an alternative conditional association).
         The vertical dotted line marks the shock date. Hover for exact values.
       </p>
       <div id="chart-irf-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
       <p class="chart-caption">
-        The bill-surprise specification eliminates spurious Bank T&amp;A and Deposits responses
-        while strengthening MMF Treasury and ON RRP channels.
+        The comparison changes estimated bank, MMF Treasury, and ON RRP associations.
+        Differences between specifications do not establish a causal funding mechanism.
       </p>
 
       <h3>3. Bill-Surprise Results at h=4 Weeks (1-std shock = <span id="summary-results-shock">$--B</span>)</h3>
       <div class="table-wrap" id="results-table"></div>
       <p class="chart-caption">
         * Significant at 5% with Newey-West HAC standard errors.
-        Binary shock is contaminated by pre-trends; bill-surprise is the clean specification.
+        These exploratory results are conditional associations; fewer significant placebos do not establish exogeneity.
       </p>
 
       <h3>4. Pre-Trend Scorecard</h3>
@@ -136,8 +137,8 @@
       <p>
         ON RRP declines by <strong><span id="summary-onrrp-effect">$--B per 1-std shock</span></strong>
         (t=<span id="summary-onrrp-tstat">--</span>).
-        The mechanism: MMFs redeem ON RRP balances to buy bills, channeling money from
-        the Fed's balance sheet to the TGA without touching bank deposits.
+        This aggregate association is consistent with MMF portfolio rotation,
+        but does not trace settlement transactions or identify bank-deposit pass-through.
       </p>
       <div id="chart-onrrp" style="width:100%;height:380px;"></div>
       <p class="chart-caption">
@@ -154,6 +155,28 @@
         Green = ON RRP abundant (&ge;$100B). Red = ON RRP scarce (&lt;$100B).
         Pre-facility weeks excluded from estimation.
       </p>
+
+      <h3>8. Fund-Level MMF Validation</h3>
+      <p>
+        A scoped SEC N-MFP data layer describes allocation changes across observed MMF portfolios.
+        Source gates pass on 36 contiguous monthly observations from 2022-12 through 2025-11:
+        stable fund IDs, total assets, Treasury holdings, Fed ON RRP, and repo categories are available;
+        the minimum mapped holdings share is 1.000; and benchmark reconciliation has median absolute pct diff 0.0421.
+      </p>
+      <div class="callout finding">
+        <p>
+          Across selected positive bill-surprise months, fund-level MMF allocations rise by
+          <strong>$229B</strong> in Treasury bills and coupons while Fed ON RRP falls by
+          <strong>$141B</strong>. These are descriptive allocation changes around selected months;
+          they do not identify a general bill-deposit substitution effect.
+        </p>
+      </div>
+      <figure class="figure-inset">
+        <img src="img/mmfalloc_eventstudy.svg" alt="Fund-level MMF allocation event-month deltas">
+        <figcaption>
+          SEC N-MFP fund-level validation inset. Deltas are event-month minus prior-month means across selected positive bill-surprise months.
+        </figcaption>
+      </figure>
 
     </section>
 
@@ -261,6 +284,7 @@
         <div class="source-card"><div class="source-name">FRED ON RRP</div><div class="source-detail">RRPONTSYD. Daily facility usage, resampled weekly.</div><span class="source-freq">Daily</span></div>
         <div class="source-card"><div class="source-name">OFR STFM &mdash; MMF</div><div class="source-detail">42 series incl. MMF Treasury holdings. Monthly, forward-filled.</div><span class="source-freq">Monthly</span></div>
         <div class="source-card"><div class="source-name">OFR STFM &mdash; NYPD</div><div class="source-detail">194 series incl. dealer Treasury repo. Ended Dec 2021.</div><span class="source-freq">Weekly</span></div>
+        <div class="source-card"><div class="source-name">SEC DERA N-MFP</div><div class="source-detail">Official monthly flat-file zips. Fund-level MMF holdings and Fed ON RRP/repo validation.</div><span class="source-freq">Monthly</span></div>
         <div class="source-card"><div class="source-name">FRED FDHBFIN</div><div class="source-detail">Foreign Treasury holdings. Quarterly. Reference only.</div><span class="source-freq">Quarterly</span></div>
       </div>
     </section>
@@ -274,8 +298,9 @@
         <li><strong>Issuance-specific.</strong> Does not capture tax receipts, coupon issuance, or spending.</li>
         <li><strong>Weekly frequency.</strong> May miss intra-week dynamics.</li>
         <li><strong>Shock persistence.</strong> Autocorrelation = 0.86. Long-horizon effects contaminated.</li>
-        <li><strong>NSA baseline.</strong> Month dummies control seasonality. SA sensitivity confirms no change in results.</li>
+        <li><strong>NSA baseline.</strong> Month dummies control seasonality. Seasonally adjusted series provide a sensitivity comparison.</li>
         <li><strong>Accounting overlap.</strong> Channels are not mutually exclusive.</li>
+        <li><strong>Fund-level validation boundary.</strong> SEC N-MFP evidence supports MMF allocation rotation; it does not identify final household ownership or bank-deposit pass-through.</li>
       </ul>
     </section>
 

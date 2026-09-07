@@ -27,6 +27,7 @@ def build_bill_size_surprise(
     min_history: int = 4,
     exclude_cmb: bool = True,
     grouping: str = "term_reopening",
+    timing: str = "issue_week",
 ) -> pd.DataFrame:
     """Weekly bill-size surprise from trailing medians of comparable bill auctions.
 
@@ -34,10 +35,23 @@ def build_bill_size_surprise(
     last `lookback` auctions in the selected grouping.
     Surprise = offering_amt - expected. Aggregated to weekly (Wednesday).
 
+    timing selects the weekly alignment:
+    - issue_week: issue-date week, the original settlement-aligned convention.
+    - announcement_week: announcement-date week, a same-week information-timing
+      robustness for diagnosing remaining pre-release/placebo movement.
+
     Returns DataFrame with columns: date, bill_size_surprise.
     """
+    if timing not in {"issue_week", "announcement_week"}:
+        raise ValueError(f"Unsupported bill surprise timing: {timing}")
+
     df = normalize_columns(auctions).copy()
+    if timing == "announcement_week" and "announcemt_date" not in df.columns:
+        raise ValueError(
+            "announcement_week timing requires the FiscalData announcemt_date column"
+        )
     df["issue_date"] = pd.to_datetime(df["issue_date"], errors="coerce")
+    df["announcemt_date"] = pd.to_datetime(df.get("announcemt_date"), errors="coerce")
     df["offering_amt"] = coerce_numeric(df["offering_amt"])
     df = df.dropna(subset=["issue_date", "offering_amt"])
     df = df[df["issue_date"] >= min_date]
@@ -71,15 +85,25 @@ def build_bill_size_surprise(
             .median()
         )
         g["surprise"] = g["offering_amt"] - g["expected"]
-        surprises.append(g[["issue_date", "surprise"]].dropna())
+        surprises.append(
+            g[["issue_date", "announcemt_date", "surprise"]].dropna(
+                subset=["issue_date", "surprise"]
+            )
+        )
 
     if not surprises:
         return pd.DataFrame(columns=["date", "bill_size_surprise"])
 
     all_surprises = pd.concat(surprises, ignore_index=True)
+    if timing == "issue_week":
+        timing_col = "issue_date"
+    elif timing == "announcement_week":
+        timing_col = "announcemt_date"
+        all_surprises = all_surprises.dropna(subset=[timing_col])
+
     # Aggregate to weekly (Wednesday)
     all_surprises["date"] = (
-        all_surprises["issue_date"].dt.to_period("W-WED").dt.end_time.dt.normalize()
+        all_surprises[timing_col].dt.to_period("W-WED").dt.end_time.dt.normalize()
     )
     weekly = all_surprises.groupby("date", as_index=False)["surprise"].sum()
     weekly = weekly.rename(columns={"surprise": "bill_size_surprise"})

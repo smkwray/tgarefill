@@ -1,20 +1,24 @@
+VENV ?= $(HOME)/venvs/tgarefill
 PYTHON ?= $(shell \
 	if [ -n "$$VIRTUAL_ENV" ] && [ -x "$$VIRTUAL_ENV/bin/python" ]; then \
 		printf '%s\n' "$$VIRTUAL_ENV/bin/python"; \
 	elif [ -n "$$UV_PROJECT_ENVIRONMENT" ] && [ -x "$$UV_PROJECT_ENVIRONMENT/bin/python" ]; then \
 		printf '%s\n' "$$UV_PROJECT_ENVIRONMENT/bin/python"; \
+	elif [ -x "$(VENV)/bin/python" ]; then \
+		printf '%s\n' "$(VENV)/bin/python"; \
 	else \
 		command -v python3 || command -v python; \
 	fi)
 
-.PHONY: venv install sync-raw staging panel events attribution local-projections auction-shock-lp figures site-data mvp site paper test clean
+.PHONY: venv install sync-raw staging panel events attribution local-projections auction-shock-lp mmfalloc figures site-data mvp site paper test clean
 
 venv:
-	$(PYTHON) -m venv .venv
+	mkdir -p "$(dir $(VENV))"
+	python3 -m venv "$(VENV)"
 
 install:
 	$(PYTHON) -m pip install -U pip
-	$(PYTHON) -m pip install -e ".[dev]"
+	$(PYTHON) -m pip install --no-compile -e ".[dev]"
 
 sync-raw:
 	$(PYTHON) scripts/download_all.py
@@ -37,6 +41,9 @@ local-projections:
 auction-shock-lp:
 	$(PYTHON) scripts/build_auction_shock_lp.py
 
+mmfalloc:
+	$(PYTHON) scripts/build_mmfalloc.py
+
 figures:
 	$(PYTHON) scripts/build_figures.py
 
@@ -50,7 +57,7 @@ site: mvp local-projections auction-shock-lp figures site-data
 paper: site
 
 test:
-	$(PYTHON) -B -m pytest -q
+	PYTHONDONTWRITEBYTECODE=1 $(PYTHON) -B -m pytest -q -o cache_dir=/tmp/tgarefill_pytest_cache
 
 clean:
 	rm -rf data/staging/*

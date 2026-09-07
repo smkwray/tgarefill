@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from scripts.build_staging import stage_fiscaldata, stage_fred
+from tgarefill.data.raw_store import RawPayloadStore
 from tgarefill.utils.files import write_json
 
 
@@ -66,3 +67,20 @@ def test_stage_fiscaldata_allows_missing_optional_input(tmp_path: Path) -> None:
 
     assert len(manifest) == 1
     assert manifest[0]["source_file"] == "required_endpoint.json"
+
+
+def test_stage_fiscaldata_reads_compact_payload_store(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    fiscal_raw = settings.paths.raw / "fiscaldata"
+    store = RawPayloadStore(fiscal_raw / "fiscaldata.sqlite")
+    store.put_json(
+        "required_endpoint",
+        {"records": [{"record_date": "2024-01-03", "value": 1}]},
+        source="/endpoint",
+    )
+
+    manifest = stage_fiscaldata(settings)
+
+    assert len(manifest) == 1
+    assert manifest[0]["source_file"] == "fiscaldata.sqlite#required_endpoint"
+    assert (settings.paths.staging / "fiscaldata" / "required_endpoint.parquet").exists()

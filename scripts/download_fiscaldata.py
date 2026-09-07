@@ -11,6 +11,7 @@ if str(SRC) not in sys.path:
 import logging
 
 from tgarefill.data.fiscaldata import fetch_paginated_endpoint
+from tgarefill.data.raw_store import RawPayloadStore
 from tgarefill.logging_utils import configure_logging
 from tgarefill.settings import get_settings
 from tgarefill.utils.files import ensure_dir, write_json
@@ -28,6 +29,7 @@ def main() -> None:
     source_cfg = settings.data_sources["fiscaldata"]
     base_url = source_cfg["base_url"]
     raw_dir = ensure_dir(settings.paths.raw / "fiscaldata")
+    store = RawPayloadStore(raw_dir / "fiscaldata.sqlite")
     manifest: list[dict[str, object]] = []
     required_failures: list[str] = []
 
@@ -40,8 +42,7 @@ def main() -> None:
                 base_url=base_url,
                 endpoint_path=meta["path"],
             )
-            destination = raw_dir / f"{key}.json"
-            write_json(payload, destination)
+            store.put_json(key, payload, source=meta["path"])
             manifest.append(
                 {
                     "key": key,
@@ -50,7 +51,7 @@ def main() -> None:
                     "description": meta.get("description"),
                     "required_for_mvp": required,
                     "record_count": payload.get("record_count", 0),
-                    "saved_to": str(destination),
+                    "saved_to": f"{store.path.name}#{key}",
                     "status": "downloaded",
                 }
             )
@@ -73,6 +74,7 @@ def main() -> None:
             else:
                 logger.warning("Optional FiscalData endpoint failed: %s (%s)", key, exc)
 
+    store.compact()
     write_json(manifest, raw_dir / "manifest.json")
     logger.info("Saved %s FiscalData payloads", len(manifest))
     if required_failures:

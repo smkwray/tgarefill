@@ -256,7 +256,7 @@ def copy_figures(figures_dir: Path, site_dir: Path) -> None:
     img_dir = site_dir / "img"
     img_dir.mkdir(parents=True, exist_ok=True)
     count = 0
-    for src in figures_dir.glob("*.png"):
+    for src in [*figures_dir.glob("*.png"), *figures_dir.glob("*.svg")]:
         shutil.copy2(src, img_dir / src.name)
         count += 1
     logger.info("Copied %s figures to site/img/", count)

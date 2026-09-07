@@ -14,6 +14,7 @@ import logging
 import pandas as pd
 
 from tgarefill.data.fiscaldata import payload_to_frame
+from tgarefill.data.raw_store import RawPayloadStore
 from tgarefill.data.fred import load_series_csv
 from tgarefill.data.ofr import dataset_payload_to_long_frame
 from tgarefill.logging_utils import configure_logging
@@ -21,7 +22,6 @@ from tgarefill.settings import get_settings
 from tgarefill.utils.files import (
     coerce_payload_to_frames,
     ensure_dir,
-    normalize_columns,
     read_excel_best_effort,
     read_text_table,
     read_tic_table,
@@ -116,6 +116,8 @@ def stage_fred(settings) -> list[dict[str, str]]:
 
 def stage_fiscaldata(settings) -> list[dict[str, str]]:
     raw_dir = settings.paths.raw / "fiscaldata"
+    store_path = raw_dir / "fiscaldata.sqlite"
+    store = RawPayloadStore(store_path) if store_path.exists() else None
     staging_dir = ensure_dir(settings.paths.staging / "fiscaldata")
     manifest: list[dict[str, str]] = []
     skipped = 0
@@ -126,28 +128,33 @@ def stage_fiscaldata(settings) -> list[dict[str, str]]:
     for key, meta in endpoints.items():
         path = raw_dir / f"{key}.json"
         required = bool(meta.get("required_for_mvp", False))
-        if not path.exists():
+        if store is not None and key in store:
+            payload = store.get_json(key)
+            source_file = f"{store_path.name}#{key}"
+        elif path.exists():
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            source_file = path.name
+        else:
             if required:
                 missing_required.append(key)
-                logger.error("Missing required FiscalData raw file: %s", path)
+                logger.error("Missing required FiscalData raw payload: %s", key)
             else:
-                logger.warning("Missing FiscalData raw file: %s", path)
+                logger.warning("Missing FiscalData raw payload: %s", key)
                 skipped += 1
             continue
-        payload = json.loads(path.read_text(encoding="utf-8"))
         df = payload_to_frame(payload)
         if df.empty:
             if required:
                 empty_required.append(key)
-                logger.error("Required FiscalData payload parsed to zero rows: %s", path.name)
+                logger.error("Required FiscalData payload parsed to zero rows: %s", source_file)
             else:
-                logger.warning("No records parsed for FiscalData payload %s", path.name)
+                logger.warning("No records parsed for FiscalData payload %s", source_file)
                 skipped += 1
             continue
-        write_dataframe(df, staging_dir / f"{path.stem}.parquet")
+        write_dataframe(df, staging_dir / f"{key}.parquet")
         manifest.append(
             {
-                "source_file": path.name,
+                "source_file": source_file,
                 "rows": str(len(df)),
                 "required_for_mvp": str(required),
             }

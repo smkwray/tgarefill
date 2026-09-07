@@ -1,14 +1,16 @@
 # Who Funds TGA Rebuilds?
 
-**[Live Site](https://smkwray.github.io/tgarefill/)** | Empirical decomposition of Treasury General Account rebuild funding channels using auction-schedule surprise identification.
+**[Live Site](https://smkwray.github.io/tgarefill/)** | Empirical decomposition of Treasury General Account rebuild funding channels using bill offering-size innovations.
 
-When the U.S. Treasury rebuilds its cash balance by issuing securities, where does the money come from? This project identifies 51 rapid rebuild episodes (2005-2026) and uses a bill-size surprise instrument to trace the causal funding channels.
+When the U.S. Treasury rebuilds its cash balance by issuing securities, where does the money come from? This project identifies 51 rapid rebuild episodes (2005-2026) and studies aggregate funding associations around bill offering-size innovations.
 
 ## Central Finding
 
-Unexpected bill issuance that rebuilds the TGA is primarily funded by **money market funds** (+$41B per 1-std shock, t=3.4), with ~75% of that absorption sourced from **ON RRP runoff** (-$31B, t=-5.0). Bank deposits, reserves, and bank Treasury holdings show no significant causal response once the predictable component of auction supply is removed.
+Larger bill offering-size innovations are associated with increases in aggregate MMF Treasury holdings and declines in ON RRP balances. The channels overlap: their coefficient ratio is not a funding share, and statistically insignificant bank outcomes do not establish an absence of bank involvement.
 
-The bill-size surprise eliminates most pre-trends (12 significant placebo coefficients → 1), confirming that the binary event indicator used in prior analysis was contaminated by predictable auction-schedule repositioning.
+The numerical comparison below and the interactive site retain an exploratory specification. The separately retained canonical pre-December-2025 specification estimates an h=4 MMF association of +$44.1B (t=3.82) and an ON RRP association of -$30.4B (t=-4.99), per one-standard-deviation bill-size innovation. Monthly MMF observations are carried into a weekly panel; this does not create independently observed weekly MMF flows. These are conditional associations, without household, final-owner, bank-deposit pass-through, or unrestricted causal identification.
+
+Fewer significant placebo coefficients in the bill-surprise comparison are a diagnostic, not proof of exogeneity. SEC N-MFP data provide a separate descriptive view of MMF allocation changes around selected positive bill-surprise months during December 2022–November 2025.
 
 ## Method
 
@@ -17,28 +19,34 @@ The bill-size surprise eliminates most pre-trends (12 significant placebo coeffi
 | Source | Series | Frequency | Role |
 |--------|--------|-----------|------|
 | FiscalData DTS | Operating cash balance | Daily | TGA Wednesday close (primary) |
-| FiscalData Auctions | Bill/coupon results | Per auction | Bill-size surprise instrument |
+| FiscalData Auctions | Bill/coupon results | Per auction | Bill-size innovation |
 | FRED H.4.1 | WTREGEN, WRBWFRBL, WLRRAL | Weekly | TGA (reference), reserves, reverse repos |
 | FRED H.8 | DPSACBW027NBOG, TASACBW027NBOG | Weekly | Bank deposits, Treasury holdings |
 | FRED | RRPONTSYD | Daily | ON RRP facility usage |
 | OFR STFM | MMF-MMF_T_TOT-M | Monthly | MMF Treasury holdings |
 | OFR STFM | NYPD-PD_RP_T_TOT-A | Weekly | Primary dealer Treasury repo (ended 2021) |
+| SEC DERA N-MFP | Monthly flat-file zips | Monthly | Fund-level MMF allocation validation |
 | FRED | FDHBFIN | Quarterly | Foreign Treasury holdings (reference only) |
 
 All values normalized to millions of USD. H.8 series converted from billions. OFR series from raw USD.
+
+Raw FiscalData responses are retained as exact JSON bytes inside one
+Zstandard-compressed `data/raw/fiscaldata/fiscaldata.sqlite` store. The adjacent
+small manifest remains human-readable, and staging reads the compact store
+directly into the same per-endpoint Parquet tables.
 
 ### Event Detection
 
 Weeks are flagged as rapid rebuilds when the weekly ΔTGA or rolling 4w/8w cumulative change exceeds the 90th percentile **of positive changes only**. Contiguous flagged weeks (max 9-day gap) are grouped into events. The positive-only threshold is critical — computing quantiles on the full distribution inflates the event count by ~50%.
 
-### Bill-Size Surprise Instrument
+### Bill Offering-Size Innovation
 
 For each non-CMB bill auction:
 ```
 surprise = offering_amount − trailing_median(last 8 same-term × reopening-status auctions, min 4)
 ```
 
-Aggregated to weekly (Wednesday-ending). This strips ~94% of weekly auction supply that was already announced by the prior Wednesday, isolating unexpected variation in Treasury financing. A tax-receipt surprise control (from DTS deposit categories) absorbs non-issuance TGA movements. A same-term-only grouping is tracked separately as a robustness comparison.
+Aggregated to weekly (Wednesday-ending). This is a deviation from a trailing same-term/reopening median; it is not a directly observed market-expectations surprise or an instrument establishing exogeneity. A tax-receipt surprise control (from DTS deposit categories) absorbs non-issuance TGA movements. A same-term-only grouping is tracked separately as a robustness comparison.
 
 ### Local Projections
 
@@ -53,7 +61,7 @@ Baseline (binary shock): 2 shock lags, 1 response lag, 11 month dummies. Bill-su
 
 ON RRP abundant (≥$100B) vs. scarce (<$100B). Pre-facility weeks (before 2013, ON RRP = NaN) are excluded from regime estimation, not lumped into "scarce."
 
-## Key Results
+## Exploratory Comparison
 
 | Channel | Binary Pre-trends | Bill-Surprise Pre-trends | Bill-Surprise h=4 (1-std) |
 |---------|:-:|:-:|:-:|
@@ -66,12 +74,31 @@ ON RRP abundant (≥$100B) vs. scarce (<$100B). Pre-facility weeks (before 2013,
 
 \* Significant at 5% with Newey-West HAC standard errors.
 
+## Fund-Level MMF Validation
+
+The `mmfalloc` extension parses official SEC DERA Form N-MFP monthly flat-file zips without extracting TSVs into the repository. It builds fund/security positions, a fund-month panel, category aggregates, source gates, benchmark reconciliation, event-window deltas, placebos, leave-one-family-out checks, and a compact downstream summary.
+
+Source gates pass on the canonical validation window:
+
+- Sample: 2022-12-31 through 2025-11-30
+- Coverage: 36 contiguous monthly observations
+- Mapping: minimum mapped portfolio-security value share = 1.000
+- Reconciliation: median absolute pct diff = 0.0421 against OFR/Fed benchmark checks
+
+Mean event-month allocation deltas across selected positive bill-surprise months:
+
+- Treasury bills + coupons: +$229B
+- Fed ON RRP: -$141B
+- Repo ex-Fed: -$11B
+
+Interpretation: aggregate changes across observed MMF portfolios show rotation toward Treasuries/T-bills and away from Fed ON RRP/repo around the selected bill-surprise months. Do not use this table to infer household behavior, final ownership, bank-deposit pass-through, or broad bill-deposit substitution.
+
 ## Caveats
 
-1. **Issuance-specific.** The shock identifies unexpected bill supply, not all TGA changes.
-2. **h=-1 ON RRP.** The one remaining pre-trend (t=-2.1) likely reflects same-week announcement effects.
-3. **Shock persistence.** Bill surprise autocorrelation = 0.86. Interpret h=4-8 as primary; h>8 is contaminated.
-4. **NSA baseline.** Month dummies control for seasonality. SA sensitivity confirms: swapping NSA for SA deposits and bank T&A leaves all results unchanged.
+1. **Issuance-specific.** The regressor measures bill offering-size deviations, not all TGA changes.
+2. **Placebos.** A remaining h=-1 ON RRP association (t=-2.1) limits a clean timing interpretation.
+3. **Shock persistence.** Bill-size innovations are persistent; the horizon coefficients need not describe a single isolated financing event.
+4. **NSA baseline.** Month dummies control for seasonality. Seasonally adjusted bank series are a sensitivity comparison, not an identification test.
 5. **Accounting overlap.** Proxy channels are not mutually exclusive.
 
 ## Quick Start
@@ -89,6 +116,9 @@ make mvp
 
 # Extended site build
 make site
+
+# Fund-level MMF validation
+make mmfalloc
 ```
 
 ## Outputs
@@ -114,13 +144,15 @@ outputs/
 │   ├── event_size_over_time.png        # Event scatter
 │   ├── irf_pooled.png                  # Binary shock IRFs
 │   ├── irf_by_regime.png              # Regime-split IRFs
-│   └── irf_continuous_regime.png      # Continuous shock regime IRFs
+│   ├── irf_continuous_regime.png      # Continuous shock regime IRFs
+│   └── mmfalloc_eventstudy.svg        # Fund-level MMF validation inset
 ├── tables/
 │   ├── event_candidates.csv
 │   ├── attribution_baseline.csv
 │   ├── local_projections.csv
 │   ├── auction_shock_lp.csv
-│   └── auction_shock_grouping_comparison.csv
+│   ├── auction_shock_grouping_comparison.csv
+│   └── mmfalloc_downstream_summary.csv
 site/
 ├── data/                              # GitHub Pages JSON
 ├── img/                               # GitHub Pages figures
@@ -133,6 +165,7 @@ All data from free, official U.S. government sources:
 - [FiscalData API](https://fiscaldata.treasury.gov/api-documentation/) — DTS, MTS, Auctions
 - [FRED](https://fred.stlouisfed.org/) — H.4.1, H.8, ON RRP
 - [OFR STFM](https://www.financialresearch.gov/short-term-funding-monitor/) — MMF, Primary Dealer, Repo
+- [SEC DERA Form N-MFP Data Sets](https://www.sec.gov/data-research/sec-markets-data/dera-form-n-mfp-data-sets) — fund-level MMF holdings
 - [Treasury.gov](https://home.treasury.gov/) — TIC, Investor-Class, Refunding
 
 ## License

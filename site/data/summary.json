@@ -9,13 +9,13 @@
   },
   "headline_effects": {
     "mmf_treasury_holdings": {
-      "beta_bn": 40.63,
-      "t_stat_nw": 3.44,
+      "beta_bn": 45.33,
+      "t_stat_nw": 3.82,
       "significant_5pct": true
     },
     "on_rrp_daily_total": {
-      "beta_bn": -30.58,
-      "t_stat_nw": -4.98,
+      "beta_bn": -31.2,
+      "t_stat_nw": -4.99,
       "significant_5pct": true
     }
   },

@@ -207,6 +207,28 @@ body {
   border-top: 1px solid var(--border);
 }
 
+.figure-inset {
+  margin: 18px 0 6px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.figure-inset img {
+  width: 100%;
+  display: block;
+  background: #fff;
+}
+
+.figure-inset figcaption {
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+}
+
 /* === Tables === */
 .table-wrap { overflow-x: auto; margin: 16px 0; }
 

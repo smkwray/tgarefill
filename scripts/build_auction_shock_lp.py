@@ -42,6 +42,9 @@ RESPONSE_VARS = [
     ("dealer_treasury_repo", "Dealer Treasury Repo"),
 ]
 
+CANONICAL_SAMPLE_END = pd.Timestamp("2025-11-30")
+RMP_REGIME_START = pd.Timestamp("2025-12-01")
+
 
 def _run_bill_surprise_lp(
     panel: pd.DataFrame,
@@ -103,6 +106,53 @@ def _build_grouping_comparison(
     return pd.DataFrame(rows)
 
 
+def _canonical_sample(panel: pd.DataFrame) -> pd.DataFrame:
+    """Main promoted sample: pre-RMP bill-plumbing regime through 2025-11."""
+    return panel[panel["date"] <= CANONICAL_SAMPLE_END].copy()
+
+
+def _add_sample_metadata(df: pd.DataFrame, sample: str, timing: str) -> pd.DataFrame:
+    out = df.copy()
+    out["sample"] = sample
+    out["timing"] = timing
+    out["canonical_sample_end"] = CANONICAL_SAMPLE_END.date().isoformat()
+    out["rmp_regime_start"] = RMP_REGIME_START.date().isoformat()
+    return out
+
+
+def _headline_summary(
+    lp_frames: dict[str, tuple[pd.DataFrame, float, str]],
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for label, (lp_df, shock_sd, note) in lp_frames.items():
+        pooled = lp_df[lp_df["regime"].isna()].copy()
+        placebo = pooled[pooled["horizon"] < 0]
+        h4 = pooled[pooled["horizon"] == 4]
+        for response_var, response_label in RESPONSE_VARS:
+            row = {
+                "spec": label,
+                "response_var": response_var,
+                "response_label": response_label,
+                "shock_sd_bn": round(shock_sd / 1000, 4),
+                "placebo_significant_count": int(
+                    placebo.loc[placebo["response_var"] == response_var, "significant_5pct"].sum()
+                ),
+                "all_channel_placebo_significant_count": int(placebo["significant_5pct"].sum()),
+                "h4_effect_bn": None,
+                "h4_t_stat_nw": None,
+                "h4_significant_5pct": None,
+                "note": note,
+            }
+            sub = h4[h4["response_var"] == response_var]
+            if not sub.empty:
+                result = sub.iloc[0]
+                row["h4_effect_bn"] = round(float(result["beta"]) * shock_sd / 1000, 4)
+                row["h4_t_stat_nw"] = round(float(result["t_stat_nw"]), 4)
+                row["h4_significant_5pct"] = bool(result["significant_5pct"])
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def main() -> None:
     configure_logging()
     settings = get_settings()
@@ -113,12 +163,25 @@ def main() -> None:
     dts_dw = pd.read_parquet(settings.paths.staging / "fiscaldata" / "dts_deposits_withdrawals_operating_cash.parquet")
 
     # Build shocks
-    bill_surprise = build_bill_size_surprise(auctions, grouping="term_reopening")
+    bill_surprise = build_bill_size_surprise(
+        auctions,
+        grouping="term_reopening",
+        timing="issue_week",
+    )
     logger.info("Bill-size surprise: %s weeks with nonzero values", (bill_surprise["bill_size_surprise"] != 0).sum())
     bill_surprise_term_only = build_bill_size_surprise(auctions, grouping="term_only")
     logger.info(
         "Bill-size surprise (term only): %s weeks with nonzero values",
         (bill_surprise_term_only["bill_size_surprise"] != 0).sum(),
+    )
+    bill_surprise_announcement_week = build_bill_size_surprise(
+        auctions,
+        grouping="term_reopening",
+        timing="announcement_week",
+    )
+    logger.info(
+        "Bill-size surprise (announcement-week timing): %s weeks with nonzero values",
+        (bill_surprise_announcement_week["bill_size_surprise"] != 0).sum(),
     )
 
     cmb_shock = build_short_notice_cmb(auctions)
@@ -136,6 +199,13 @@ def main() -> None:
         on="date",
         how="left",
     )
+    panel = panel.merge(
+        bill_surprise_announcement_week.rename(
+            columns={"bill_size_surprise": "bill_size_surprise_announcement_week"}
+        ),
+        on="date",
+        how="left",
+    )
     panel = panel.merge(cmb_shock, on="date", how="left")
     panel = panel.merge(tax_surprise, on="date", how="left")
 
@@ -143,14 +213,24 @@ def main() -> None:
     for col in [
         "bill_size_surprise",
         "bill_size_surprise_term_only",
+        "bill_size_surprise_announcement_week",
         "short_notice_issuance",
         "tax_receipt_surprise",
     ]:
         panel[col] = panel[col].fillna(0)
 
     panel["regime"] = classify_regime(panel)
-    bill_shock_sd = float(panel["bill_size_surprise"].std())
-    bill_shock_sd_term_only = float(panel["bill_size_surprise_term_only"].std())
+    panel["rmp_regime"] = "pre_rmp"
+    panel.loc[panel["date"] >= RMP_REGIME_START, "rmp_regime"] = "post_rmp"
+    panel["post_rmp_regime"] = (panel["date"] >= RMP_REGIME_START).astype(float)
+
+    canonical_panel = _canonical_sample(panel)
+    bill_shock_sd = float(canonical_panel["bill_size_surprise"].std())
+    bill_shock_sd_term_only = float(canonical_panel["bill_size_surprise_term_only"].std())
+    bill_shock_sd_announcement_week = float(
+        canonical_panel["bill_size_surprise_announcement_week"].std()
+    )
+    bill_shock_sd_extended = float(panel["bill_size_surprise"].std())
 
     response_cols = [col for col, _ in RESPONSE_VARS]
     lp_cfg = settings.analysis.get("local_projections", {})
@@ -175,9 +255,31 @@ def main() -> None:
         if k in rules
     })
     panel["rapid_rebuild_flag"] = flagged["rapid_rebuild_flag"].astype(float)
+    canonical_panel = _canonical_sample(panel)
+    canonical_shocks = canonical_panel[
+        [
+            "date",
+            "bill_size_surprise",
+            "bill_size_surprise_announcement_week",
+            "tax_receipt_surprise",
+            "rapid_rebuild_flag",
+            "regime",
+            "rmp_regime",
+        ]
+    ].copy()
+    canonical_shocks["sample"] = "canonical_pre_rmp_through_2025_11"
+    canonical_shocks["canonical_sample_end"] = CANONICAL_SAMPLE_END.date().isoformat()
+    write_dataframe(
+        canonical_shocks,
+        settings.paths.processed / "canonical_bill_surprise_shocks.parquet",
+    )
+    write_dataframe(
+        canonical_shocks,
+        settings.paths.output_tables / "canonical_bill_surprise_shocks.csv",
+    )
 
     binary_lp = results_to_dataframe(estimate_local_projections(
-        panel=panel,
+        panel=canonical_panel,
         shock_col="rapid_rebuild_flag",
         response_cols=response_cols,
         min_horizon=-placebo,
@@ -188,11 +290,16 @@ def main() -> None:
         control_cols=["tax_receipt_surprise"],
     ))
     binary_lp["shock_spec"] = "binary_with_tax_control"
+    binary_lp = _add_sample_metadata(
+        binary_lp,
+        sample="canonical_pre_rmp_through_2025_11",
+        timing="issue_week",
+    )
 
     # === Bill-size surprise LP ===
     logger.info("Running bill-size surprise LP...")
     bill_lp = _run_bill_surprise_lp(
-        panel=panel,
+        panel=canonical_panel,
         shock_col="bill_size_surprise",
         response_cols=response_cols,
         shock_lags=shock_lags,
@@ -202,13 +309,18 @@ def main() -> None:
         max_horizon=max_horizon,
     )
     bill_lp["shock_spec"] = "bill_surprise"
+    bill_lp = _add_sample_metadata(
+        bill_lp,
+        sample="canonical_pre_rmp_through_2025_11",
+        timing="issue_week",
+    )
     logger.info("Bill-surprise LP: %s results, %s significant",
                 len(bill_lp), bill_lp["significant_5pct"].sum())
 
     # === Bill-size surprise LP with regime split ===
     logger.info("Running bill-size surprise LP (regime split)...")
     bill_regime_lp = _run_bill_surprise_lp(
-        panel=panel,
+        panel=canonical_panel,
         shock_col="bill_size_surprise",
         response_cols=response_cols,
         shock_lags=shock_lags,
@@ -219,10 +331,15 @@ def main() -> None:
         regime_col="regime",
     )
     bill_regime_lp["shock_spec"] = "bill_surprise"
+    bill_regime_lp = _add_sample_metadata(
+        bill_regime_lp,
+        sample="canonical_pre_rmp_through_2025_11",
+        timing="issue_week",
+    )
 
     logger.info("Running bill-size surprise LP (term-only robustness)...")
     bill_lp_term_only = _run_bill_surprise_lp(
-        panel=panel,
+        panel=canonical_panel,
         shock_col="bill_size_surprise_term_only",
         response_cols=response_cols,
         shock_lags=shock_lags,
@@ -232,11 +349,52 @@ def main() -> None:
         max_horizon=max_horizon,
     )
     bill_lp_term_only["shock_spec"] = "bill_surprise_term_only"
+    bill_lp_term_only = _add_sample_metadata(
+        bill_lp_term_only,
+        sample="canonical_pre_rmp_through_2025_11",
+        timing="issue_week",
+    )
+
+    logger.info("Running bill-size surprise LP (announcement-week timing robustness)...")
+    bill_lp_announcement_week = _run_bill_surprise_lp(
+        panel=canonical_panel,
+        shock_col="bill_size_surprise_announcement_week",
+        response_cols=response_cols,
+        shock_lags=shock_lags,
+        response_lags=response_lags,
+        add_month=add_month,
+        placebo=placebo,
+        max_horizon=max_horizon,
+    )
+    bill_lp_announcement_week["shock_spec"] = "bill_surprise_announcement_week"
+    bill_lp_announcement_week = _add_sample_metadata(
+        bill_lp_announcement_week,
+        sample="same_week_timing_canonical_pre_rmp",
+        timing="announcement_week",
+    )
+
+    logger.info("Running bill-size surprise LP (extended-through-latest robustness)...")
+    bill_lp_extended = _run_bill_surprise_lp(
+        panel=panel,
+        shock_col="bill_size_surprise",
+        response_cols=response_cols,
+        shock_lags=shock_lags,
+        response_lags=response_lags,
+        add_month=add_month,
+        placebo=placebo,
+        max_horizon=max_horizon,
+    )
+    bill_lp_extended["shock_spec"] = "bill_surprise_extended_latest"
+    bill_lp_extended = _add_sample_metadata(
+        bill_lp_extended,
+        sample="extended_through_latest_with_post_rmp_labeled",
+        timing="issue_week",
+    )
 
     # === Short-notice CMB LP (robustness) ===
     logger.info("Running short-notice CMB LP...")
     cmb_lp = results_to_dataframe(estimate_local_projections(
-        panel=panel,
+        panel=canonical_panel,
         shock_col="short_notice_issuance",
         response_cols=response_cols,
         min_horizon=-placebo,
@@ -247,11 +405,26 @@ def main() -> None:
         control_cols=["tax_receipt_surprise"],
     ))
     cmb_lp["shock_spec"] = "short_notice_cmb"
+    cmb_lp = _add_sample_metadata(
+        cmb_lp,
+        sample="canonical_pre_rmp_through_2025_11",
+        timing="issue_week",
+    )
     logger.info("CMB LP: %s results, %s significant",
                 len(cmb_lp), cmb_lp["significant_5pct"].sum())
 
     # Save results
-    combined = pd.concat([binary_lp, bill_lp, bill_regime_lp, cmb_lp], ignore_index=True)
+    combined = pd.concat(
+        [
+            binary_lp,
+            bill_lp,
+            bill_regime_lp,
+            bill_lp_announcement_week,
+            bill_lp_extended,
+            cmb_lp,
+        ],
+        ignore_index=True,
+    )
     write_dataframe(combined, settings.paths.processed / "auction_shock_lp.parquet")
     write_dataframe(combined, settings.paths.output_tables / "auction_shock_lp.csv")
     grouping_comparison = _build_grouping_comparison(
@@ -267,6 +440,29 @@ def main() -> None:
     write_dataframe(
         grouping_comparison,
         settings.paths.output_tables / "auction_shock_grouping_comparison.csv",
+    )
+    promotion_summary = _headline_summary(
+        {
+            "canonical_issue_week": (
+                bill_lp,
+                bill_shock_sd,
+                "Main promoted sample: pre-RMP through 2025-11.",
+            ),
+            "same_week_announcement_timing": (
+                bill_lp_announcement_week,
+                bill_shock_sd_announcement_week,
+                "Timing robustness: shock aligned to announcement week.",
+            ),
+            "extended_latest": (
+                bill_lp_extended,
+                bill_shock_sd_extended,
+                "Through-latest robustness only; post-2025-11 RMP regime included.",
+            ),
+        }
+    )
+    write_dataframe(
+        promotion_summary,
+        settings.paths.output_tables / "promotion_robustness_summary.csv",
     )
 
     # === Compare pre-trends: binary vs bill-surprise ===

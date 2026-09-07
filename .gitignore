@@ -38,6 +38,7 @@ outputs/*.md
 
 # do/ orchestration docs (internal workflow, not public)
 do/
+CLAUDE.md
 
 # internal planning docs
 AGENTS.md
@@ -80,5 +81,17 @@ Thumbs.db
 *\ (1).*
 *\ 2.*
 
+# device-local agent worktrees
+.worktrees/
+
 # uv lock (reproducible from pyproject.toml)
 uv.lock
+
+# Device-local configuration and generated reports
+.env.*
+.codex/
+.cursor/
+.claude/
+*.sync-conflict-*
+outputs/reports/
+outputs/*.md
