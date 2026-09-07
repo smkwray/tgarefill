@@ -25,15 +25,16 @@ Fewer significant placebo coefficients in the bill-surprise comparison are a dia
 | FRED | RRPONTSYD | Daily | ON RRP facility usage |
 | OFR STFM | MMF-MMF_T_TOT-M | Monthly | MMF Treasury holdings |
 | OFR STFM | NYPD-PD_RP_T_TOT-A | Weekly | Primary dealer Treasury repo (ended 2021) |
-| SEC DERA N-MFP | Monthly flat-file zips | Monthly | Fund-level MMF allocation validation |
+| SEC DERA N-MFP | Monthly flat-file zips | Monthly | Descriptive fund-level MMF allocation |
 | FRED | FDHBFIN | Quarterly | Foreign Treasury holdings (reference only) |
 
 All values normalized to millions of USD. H.8 series converted from billions. OFR series from raw USD.
 
-Raw FiscalData responses are retained as exact JSON bytes inside one
-Zstandard-compressed `data/raw/fiscaldata/fiscaldata.sqlite` store. The adjacent
-small manifest remains human-readable, and staging reads the compact store
-directly into the same per-endpoint Parquet tables.
+FiscalData downloads retain normalized paginated JSON payloads in a compressed SQLite
+snapshot, not original HTTP response bytes. Each fresh snapshot and its manifest share
+a run ID and are selected together through an atomic current-snapshot pointer.
+Staging accepts only payload hashes marked downloaded in that manifest; failed optional
+endpoints are absent from the new snapshot.
 
 ### Event Detection
 
@@ -74,24 +75,11 @@ ON RRP abundant (≥$100B) vs. scarce (<$100B). Pre-facility weeks (before 2013,
 
 \* Significant at 5% with Newey-West HAC standard errors.
 
-## Fund-Level MMF Validation
+## Descriptive MMF Allocation Extension
 
-The `mmfalloc` extension parses official SEC DERA Form N-MFP monthly flat-file zips without extracting TSVs into the repository. It builds fund/security positions, a fund-month panel, category aggregates, source gates, benchmark reconciliation, event-window deltas, placebos, leave-one-family-out checks, and a compact downstream summary.
+The `mmfalloc` extension parses SEC N-MFP monthly files and compares observed fund allocations around selected months. Requested source months must match observed coverage; events are ranked only within that observed window. Failed source gates stop the build before replacing any outputs.
 
-Source gates pass on the canonical validation window:
-
-- Sample: 2022-12-31 through 2025-11-30
-- Coverage: 36 contiguous monthly observations
-- Mapping: minimum mapped portfolio-security value share = 1.000
-- Reconciliation: median absolute pct diff = 0.0421 against OFR/Fed benchmark checks
-
-Mean event-month allocation deltas across selected positive bill-surprise months:
-
-- Treasury bills + coupons: +$229B
-- Fed ON RRP: -$141B
-- Repo ex-Fed: -$11B
-
-Interpretation: aggregate changes across observed MMF portfolios show rotation toward Treasuries/T-bills and away from Fed ON RRP/repo around the selected bill-surprise months. Do not use this table to infer household behavior, final ownership, bank-deposit pass-through, or broad bill-deposit substitution.
+This separate descriptive extension neither validates the canonical estimator nor independently establishes its mechanism. Exact extension values and its figure are withheld from this release pending a separate receipt binding inputs, selected events, gates and outputs. The canonical OPEN-07 receipt does not cover the extension.
 
 ## Caveats
 
@@ -117,7 +105,7 @@ make mvp
 # Extended site build
 make site
 
-# Fund-level MMF validation
+# Descriptive MMF allocation extension
 make mmfalloc
 ```
 
@@ -137,7 +125,6 @@ The extended site build extends that with additional tables, figures, and the re
 outputs/
 ├── figures/
 │   ├── tga_timeline_events.png        # TGA with 51 events highlighted
-│   ├── irf_binary_vs_bill_surprise.png # Central comparison figure
 │   ├── attribution_stacked_top20.png   # Top 20 event decomposition
 │   ├── era_dominant_source.png         # Funding channel evolution
 │   ├── onrrp_era.png                   # TGA + ON RRP dual panel
@@ -145,7 +132,6 @@ outputs/
 │   ├── irf_pooled.png                  # Binary shock IRFs
 │   ├── irf_by_regime.png              # Regime-split IRFs
 │   ├── irf_continuous_regime.png      # Continuous shock regime IRFs
-│   └── mmfalloc_eventstudy.svg        # Fund-level MMF validation inset
 ├── tables/
 │   ├── event_candidates.csv
 │   ├── attribution_baseline.csv

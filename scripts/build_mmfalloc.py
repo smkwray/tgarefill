@@ -22,6 +22,7 @@ from tgarefill.mmfalloc import (
     month_range,
     parse_sec_nmfp_zips,
     select_monthly_sec_links,
+    select_cached_monthly_zips,
     write_all_outputs,
 )
 from tgarefill.settings import get_settings
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build MMF fund-level allocation validation outputs.")
+    parser = argparse.ArgumentParser(description="Build descriptive MMF allocation extension outputs.")
     parser.add_argument("--start-month", default=os.getenv("MMFALLOC_START_MONTH", DEFAULT_START_MONTH))
     parser.add_argument("--end-month", default=os.getenv("MMFALLOC_END_MONTH", DEFAULT_END_MONTH))
     parser.add_argument("--overwrite-raw", action="store_true", help="Re-download SEC zip files even if present.")
@@ -67,13 +68,7 @@ def main() -> None:
         manifest = download_sec_zips(session, selected, raw_dir, overwrite=args.overwrite_raw)
         logger.info("SEC N-MFP raw manifest: %s monthly zips", len(manifest))
 
-    zip_paths = sorted(raw_dir.glob("*_nmfp.zip"))
-    wanted_names = set()
-    if not args.skip_download:
-        wanted_names = {Path(url).name for url in selected["url"]}
-        zip_paths = [path for path in zip_paths if path.name in wanted_names]
-    if not zip_paths:
-        raise RuntimeError(f"No SEC N-MFP zips found in {raw_dir}")
+    zip_paths = select_cached_monthly_zips(raw_dir, months)
 
     logger.info("Parsing %s SEC N-MFP monthly zips", len(zip_paths))
     positions, fund_month = parse_sec_nmfp_zips(zip_paths)
@@ -103,7 +98,7 @@ def main() -> None:
     gates = results["gates"]
     failed = gates[~gates["passed"]]
     if not failed.empty:
-        logger.warning("MMF allocation source gates failed:\n%s", failed.to_string(index=False))
+        raise RuntimeError("MMF allocation source gates failed; outputs not promoted")
     else:
         logger.info("MMF allocation source gates passed")
 

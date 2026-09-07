@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320">
-<rect width="100%" height="100%" fill="white"/>
-<text x="10" y="20" font-size="16" font-weight="700">MMF allocation event-month deltas, million USD</text>
-<line x1="480" x2="480" y1="42" y2="296" stroke="#111827" stroke-width="1"/>
-<text x="10" y="48" font-size="14">fed_onrrp</text><rect x="218.6" y="30" width="261.4" height="24" fill="#b91c1c" /><text x="138.6" y="48" font-size="13">-141,051</text><text x="10" y="96" font-size="14">agency_repo</text><rect x="460.6" y="78" width="19.4" height="24" fill="#b91c1c" /><text x="380.6" y="96" font-size="13">-10,449</text><text x="10" y="144" font-size="14">private_treasury_repo</text><rect x="479.2" y="126" width="0.8" height="24" fill="#b91c1c" /><text x="399.2" y="144" font-size="13">-449</text><text x="10" y="192" font-size="14">treasury_coupons</text><rect x="480.0" y="174" width="144.9" height="24" fill="#2563eb" /><text x="630.9" y="192" font-size="13">78,169</text><text x="10" y="240" font-size="14">treasury_bills</text><rect x="480.0" y="222" width="280.0" height="24" fill="#2563eb" /><text x="766.0" y="240" font-size="13">151,093</text>
-</svg>

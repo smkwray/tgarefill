@@ -1,4 +1,9 @@
 {
+  "selected_spec": "extended_latest",
+  "sample": "extended_through_latest_with_post_rmp_labeled",
+  "timing": "issue_week",
+  "canonical_sample_end": "2025-11-30",
+  "rmp_regime_start": "2025-12-01",
   "event_count": 51,
   "bill_shock_sd_bn": 19.28,
   "panel": {
@@ -9,13 +14,13 @@
   },
   "headline_effects": {
     "mmf_treasury_holdings": {
-      "beta_bn": 45.33,
-      "t_stat_nw": 3.82,
+      "beta_bn": 40.63,
+      "t_stat_nw": 3.44,
       "significant_5pct": true
     },
     "on_rrp_daily_total": {
-      "beta_bn": -31.2,
-      "t_stat_nw": -4.99,
+      "beta_bn": -30.58,
+      "t_stat_nw": -4.98,
       "significant_5pct": true
     }
   },

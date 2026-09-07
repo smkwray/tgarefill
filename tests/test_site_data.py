@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.build_site_data import build_events, build_summary
+from scripts.build_site_data import build_events, build_summary, build_lp_comparison, _extended_results
 
 
 def test_build_events_uses_delta_tga_event(tmp_path: Path) -> None:
@@ -77,7 +77,7 @@ def test_build_summary_generates_headline_metrics(tmp_path: Path) -> None:
     pd.DataFrame(
         [
             {
-                "shock_spec": "bill_surprise",
+                "shock_spec": "bill_surprise_extended_latest",
                 "regime": None,
                 "response_var": "mmf_treasury_holdings",
                 "horizon": -1,
@@ -86,7 +86,7 @@ def test_build_summary_generates_headline_metrics(tmp_path: Path) -> None:
                 "t_stat_nw": 0.0,
             },
             {
-                "shock_spec": "bill_surprise",
+                "shock_spec": "bill_surprise_extended_latest",
                 "regime": None,
                 "response_var": "on_rrp_daily_total",
                 "horizon": -1,
@@ -95,7 +95,7 @@ def test_build_summary_generates_headline_metrics(tmp_path: Path) -> None:
                 "t_stat_nw": 0.0,
             },
             {
-                "shock_spec": "bill_surprise",
+                "shock_spec": "bill_surprise_extended_latest",
                 "regime": None,
                 "response_var": "mmf_treasury_holdings",
                 "horizon": 4,
@@ -104,7 +104,7 @@ def test_build_summary_generates_headline_metrics(tmp_path: Path) -> None:
                 "t_stat_nw": 3.4,
             },
             {
-                "shock_spec": "bill_surprise",
+                "shock_spec": "bill_surprise_extended_latest",
                 "regime": None,
                 "response_var": "on_rrp_daily_total",
                 "horizon": 4,
@@ -115,12 +115,27 @@ def test_build_summary_generates_headline_metrics(tmp_path: Path) -> None:
         ]
     ).to_csv(auction_lp_csv, index=False)
 
+    auction = pd.read_csv(auction_lp_csv)
+    for column, value in {"sample": "extended_through_latest_with_post_rmp_labeled", "timing": "issue_week", "canonical_sample_end": "2025-11-30", "rmp_regime_start": "2025-12-01"}.items():
+        auction[column] = value
+    for column in ["ci_lower", "ci_upper", "se", "se_nw", "t_stat", "n_obs", "r_squared"]:
+        auction[column] = 1.0
+    auction.to_csv(auction_lp_csv, index=False)
+    binary = pd.read_csv(pooled_lp_csv)
+    for column in ["ci_lower", "ci_upper", "se", "se_nw", "t_stat", "n_obs", "r_squared"]:
+        binary[column] = 1.0
+    binary.to_csv(pooled_lp_csv, index=False)
+    robustness_csv = tmp_path / "promotion_robustness_summary.csv"
+    pd.DataFrame([
+        {"spec": "extended_latest", "response_var": "mmf_treasury_holdings", "shock_sd_bn": 19.2845, "h4_effect_bn": 40.49745},
+        {"spec": "extended_latest", "response_var": "on_rrp_daily_total", "shock_sd_bn": 19.2845, "h4_effect_bn": -30.8552},
+    ]).to_csv(robustness_csv, index=False)
     build_summary(
         panel=panel,
         events_csv=events_csv,
         pooled_lp_csv=pooled_lp_csv,
         auction_shock_lp_csv=auction_lp_csv,
-        bill_shock_sd=19_284.5,
+        robustness_csv=robustness_csv,
         site_dir=tmp_path,
     )
 
@@ -131,3 +146,21 @@ def test_build_summary_generates_headline_metrics(tmp_path: Path) -> None:
     assert summary["headline_effects"]["on_rrp_daily_total"]["beta_bn"] == -30.86
     assert summary["pretrends"]["binary"]["significant_placebo_count"] == 1
     assert summary["pretrends"]["bill_surprise"]["channels_with_hits"] == 1
+
+    assert summary["selected_spec"] == "extended_latest"
+    assert summary["timing"] == "issue_week"
+    assert summary["canonical_sample_end"] == "2025-11-30"
+    build_lp_comparison(pooled_lp_csv, auction_lp_csv, robustness_csv, tmp_path)
+    comparison = json.loads((tmp_path / "data/lp_comparison.json").read_text())
+    continuous = [r for r in comparison if r["shock_spec"] == "bill_surprise_extended_latest"]
+    assert continuous
+    for row in continuous:
+        assert row["beta_bn"] == round(row["beta"] * 19.2845, 2)
+        assert row["ci_lower_bn"] == round(row["ci_lower"] * 19.2845, 2)
+        assert row["ci_upper_bn"] == round(row["ci_upper"] * 19.2845, 2)
+        assert row["sample"] == summary["sample"]
+    wrong = pd.read_csv(robustness_csv)
+    wrong["shock_sd_bn"] = 18.7735
+    wrong.to_csv(robustness_csv, index=False)
+    with pytest.raises(ValueError, match="coefficient/SD mismatch"):
+        _extended_results(auction_lp_csv, robustness_csv)

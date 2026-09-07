@@ -1,4 +1,4 @@
-"""Fund-level MMF allocation validation from SEC N-MFP data.
+"""Descriptive fund-level MMF allocation from SEC N-MFP data.
 
 This module keeps the extension deliberately narrow: parse official SEC DERA
 N-MFP flat-file zips, map portfolio rows into a small set of funding-channel
@@ -8,6 +8,10 @@ shock series.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+from tempfile import TemporaryDirectory
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -126,10 +130,29 @@ def download_sec_zips(
                 "url": url,
                 "saved_to": str(destination),
                 "bytes": destination.stat().st_size,
+                "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
             }
         )
     write_json(manifest, raw_dir / "manifest.json")
     return manifest
+
+
+def select_cached_monthly_zips(raw_dir: Path, months: Iterable[pd.Period]) -> list[Path]:
+    """Select exact requested months from the acquisition manifest, never a raw glob."""
+    manifest = json.loads((raw_dir / "manifest.json").read_text())
+    selected = []
+    for month in months:
+        matches = [row for row in manifest if pd.Period(row["report_month"], freq="M") == month]
+        if len(matches) != 1:
+            raise RuntimeError(f"Expected one SEC archive for requested month {month}")
+        row = matches[0]
+        path = raw_dir / Path(row["url"]).name
+        if not path.is_file():
+            raise RuntimeError(f"Missing SEC archive for requested month {month}")
+        if row.get("sha256") and hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
+            raise RuntimeError(f"SEC archive hash mismatch for {month}")
+        selected.append(path)
+    return selected
 
 
 def parse_sec_nmfp_zips(zip_paths: Iterable[Path]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -484,6 +507,8 @@ def build_event_panel(fund_month: pd.DataFrame, shocks: pd.DataFrame, top_n_even
     shock_months["date"] = pd.to_datetime(shock_months["date"])
     shock_months["report_month"] = shock_months["date"].dt.to_period("M").dt.to_timestamp("M")
     shock_months = shock_months.groupby("report_month", as_index=False)["bill_size_surprise"].sum()
+    observed = pd.to_datetime(fund_month["report_month"]).dt.to_period("M")
+    shock_months = shock_months[shock_months["report_month"].dt.to_period("M").isin(observed)]
     shock_months = shock_months[shock_months["bill_size_surprise"] > 0].nlargest(top_n_events, "bill_size_surprise")
     frames: list[pd.DataFrame] = []
     panel = fund_month.copy()
@@ -598,13 +623,13 @@ def build_downstream_summary(
                     "metric": "sample_start",
                     "value": pd.to_datetime(coverage["report_month"].min()).date().isoformat(),
                     "unit": "date",
-                    "note": "First SEC N-MFP report month in validation sample",
+                    "note": "First SEC N-MFP report month in descriptive allocation sample",
                 },
                 {
                     "metric": "sample_end",
                     "value": pd.to_datetime(coverage["report_month"].max()).date().isoformat(),
                     "unit": "date",
-                    "note": "Last SEC N-MFP report month in validation sample",
+                    "note": "Last SEC N-MFP report month in descriptive allocation sample",
                 },
                 {
                     "metric": "contiguous_months",
@@ -664,7 +689,7 @@ def build_downstream_summary(
     rows.append(
         {
             "metric": "claim_boundary",
-            "value": "focused_tga_refill_mmf_allocation_support_only",
+            "value": "descriptive_allocation_extension_only",
             "unit": "label",
             "note": "Do not use for broad bill-deposit substitution, household ownership, or bank pass-through claims",
         }
@@ -699,29 +724,29 @@ Sample: {source_months[0]} through {source_months[1]}.
 
 Classification: portfolio-security rows are mapped into Treasury bills, Treasury coupons, Fed ON RRP, private Treasury repo, agency repo, agency debt, private instruments, cash/other, and unmapped. Federal Reserve Bank of New York repo rows are classified as `fed_onrrp`.
 
-Validation gates:
+Source gates:
 {gate_lines}
 """
-    validation = f"""# MMF Allocation Validation
+    validation = f"""# MMF Allocation Source Checks
 
 Status: {'passes narrow backend gates' if passed_all else 'fails at least one backend gate'}.
 
 {coverage_note}
 
-The output is a fund-level allocation validation layer for the focused TGA-refill funding-chain claim. It is not a bank-deposit pass-through estimator.
+This is a separate descriptive allocation extension. Its event-window comparisons neither validate the canonical estimator nor independently establish its mechanism.
 """
     boundary = """# MMF Allocation Claim Boundary
 
-Allowed if gates pass: fund-level MMF allocation evidence supports the focused `tgarefill` mechanism that bill-funded TGA-refill shocks are absorbed through MMF Treasury holdings and ON RRP/repo rotation.
+Allowed if gates pass: describe observed fund allocation changes around selected in-window months. These comparisons neither validate the canonical estimator nor independently establish its mechanism.
 
 Forbidden: broad bill-deposit substitution, household behavior, exact final ownership, or changes to TDC estimator defaults.
 """
-    memo = """# MMF Allocation Promotion Memo
+    memo = """# Descriptive MMF Allocation Extension
 
-The `mmfalloc` extension adds a fund-month validation layer underneath the existing weekly `tgarefill` result. Its job is limited: check whether individual money funds rotate toward Treasury bills/Treasuries and away from Fed ON RRP or repo around the canonical bill-surprise months.
-
-The headline claim remains narrow. This supports the focused TGA-refill funding-chain mechanism; it does not revive a broad claim that Treasury bills drain bank deposits one-for-one.
+This separate event-window comparison describes fund allocations around selected positive bill offering-size deviation months. It neither validates the canonical estimator nor independently establishes its mechanism. It does not identify funding routes or deposit substitution.
 """
+    event_months = sorted(pd.to_datetime(baseline["event_month"]).dt.strftime("%Y-%m").unique()) if not baseline.empty else []
+    memo += f"\nSelected event count: {len(event_months)}. Months: {', '.join(event_months) or 'none'}.\n"
     if not baseline.empty:
         top = baseline.groupby("category", as_index=False)["delta_millions"].mean().sort_values("delta_millions", ascending=False).head(5)
         memo += "\nMean event-month deltas across selected positive bill-surprise months:\n"
@@ -784,25 +809,39 @@ def write_all_outputs(
     coverage = build_coverage_table(fund_month, positions)
     reconciliation = build_reconciliation_table(category_aggregates, weekly_panel)
     gates = build_validation_gates(coverage, reconciliation)
+    observed_months = set(pd.to_datetime(coverage["report_month"]).dt.to_period("M"))
+    if observed_months != set(month_range(*source_months)):
+        raise RuntimeError("Observed SEC coverage does not match the exact requested months")
+    if gates.empty or not gates["passed"].eq(True).all():
+        raise RuntimeError("MMF allocation source gates failed; outputs not promoted")
     event_panel = build_event_panel(fund_month, shocks)
     baseline = build_baseline_table(event_panel)
     placebos = build_placebos(event_panel)
     leave_one = build_leave_one_family_out(event_panel)
     downstream_summary = build_downstream_summary(gates, coverage, baseline)
 
-    write_dataframe(positions, processed_dir / "mmf_positions.parquet")
-    write_dataframe(fund_month, processed_dir / "mmf_fund_month_panel.parquet")
-    write_dataframe(category_aggregates, processed_dir / "mmf_category_aggregates.csv")
-    write_dataframe(event_panel, processed_dir / "mmf_event_panel.csv")
-    write_dataframe(coverage, output_tables_dir / "mmfalloc_coverage.csv")
-    write_dataframe(reconciliation, output_tables_dir / "mmfalloc_reconciliation.csv")
-    write_dataframe(gates, output_tables_dir / "mmfalloc_source_gates.csv")
-    write_dataframe(baseline, output_tables_dir / "mmfalloc_baseline.csv")
-    write_dataframe(placebos, output_tables_dir / "mmfalloc_placebos.csv")
-    write_dataframe(leave_one, output_tables_dir / "mmfalloc_leave_one_family_out.csv")
-    write_dataframe(downstream_summary, output_tables_dir / "mmfalloc_downstream_summary.csv")
-    write_eventstudy_svg(output_figures_dir / "mmfalloc_eventstudy.svg", baseline)
-    write_method_reports(output_reports_dir, gates, coverage, baseline, source_months)
+    destinations = [processed_dir, output_tables_dir, output_figures_dir, output_reports_dir]
+    with TemporaryDirectory(prefix=".mmfalloc-", dir=processed_dir.parent) as temporary:
+        stage = Path(temporary)
+        processed_dir, output_tables_dir, output_figures_dir, output_reports_dir = [stage / str(i) for i in range(4)]
+        write_dataframe(positions, processed_dir / "mmf_positions.parquet")
+        write_dataframe(fund_month, processed_dir / "mmf_fund_month_panel.parquet")
+        write_dataframe(category_aggregates, processed_dir / "mmf_category_aggregates.csv")
+        write_dataframe(event_panel, processed_dir / "mmf_event_panel.csv")
+        write_dataframe(coverage, output_tables_dir / "mmfalloc_coverage.csv")
+        write_dataframe(reconciliation, output_tables_dir / "mmfalloc_reconciliation.csv")
+        write_dataframe(gates, output_tables_dir / "mmfalloc_source_gates.csv")
+        write_dataframe(baseline, output_tables_dir / "mmfalloc_baseline.csv")
+        write_dataframe(placebos, output_tables_dir / "mmfalloc_placebos.csv")
+        write_dataframe(leave_one, output_tables_dir / "mmfalloc_leave_one_family_out.csv")
+        write_dataframe(downstream_summary, output_tables_dir / "mmfalloc_downstream_summary.csv")
+        write_eventstudy_svg(output_figures_dir / "mmfalloc_eventstudy.svg", baseline)
+        write_method_reports(output_reports_dir, gates, coverage, baseline, source_months)
+        # All artifacts and gates exist before any destination is replaced.
+        for index, destination in enumerate(destinations):
+            for artifact in (stage / str(index)).glob("*"):
+                ensure_dir(destination)
+                os.replace(artifact, destination / artifact.name)
     return {
         "coverage": coverage,
         "reconciliation": reconciliation,

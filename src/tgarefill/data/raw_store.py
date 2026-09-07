@@ -130,6 +130,31 @@ class RawPayloadStore:
         return conn
 
 
+def open_fiscaldata_snapshot(raw_dir: Path) -> tuple[RawPayloadStore, dict[str, dict], str]:
+    """Resolve one atomically selected store/manifest pair; reject unbound legacy keys."""
+    try:
+        pointer = json.loads((raw_dir / "current.json").read_text())
+        run_id = pointer["run_id"]
+        if not isinstance(run_id, str) or not run_id or any(c not in "0123456789abcdef" for c in run_id):
+            raise ValueError("Invalid FiscalData snapshot run ID")
+        directory = raw_dir / "snapshots" / run_id
+        manifest_bytes = (directory / "manifest.json").read_bytes()
+        if hashlib.sha256(manifest_bytes).hexdigest() != pointer["manifest_sha256"]:
+            raise ValueError("FiscalData manifest hash mismatch")
+        manifest = json.loads(manifest_bytes)
+        if manifest["run_id"] != run_id:
+            raise ValueError("FiscalData snapshot run mismatch")
+        store_path = directory / "fiscaldata.sqlite"
+        if hashlib.sha256(store_path.read_bytes()).hexdigest() != manifest["store_sha256"]:
+            raise ValueError("FiscalData snapshot store hash mismatch")
+        entries = {row["key"]: row for row in manifest["endpoints"]}
+        if len(entries) != len(manifest["endpoints"]):
+            raise ValueError("Duplicate FiscalData manifest endpoint")
+        return RawPayloadStore(store_path), entries, run_id
+    except (OSError, KeyError, ValueError) as exc:
+        raise RuntimeError(f"No valid manifest-bound FiscalData snapshot: {exc}") from exc
+
+
 def _encode(payload: bytes) -> tuple[str, bytes]:
     if len(payload) < COMPRESSION_MIN_BYTES:
         return "identity", payload

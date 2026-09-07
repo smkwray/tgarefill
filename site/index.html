@@ -7,13 +7,11 @@
   <meta name="description" content="Empirical decomposition of Treasury General Account rebuild funding channels using bill offering-size innovations.">
   <meta property="og:title" content="Who Funds TGA Rebuilds?">
   <meta property="og:description" content="Aggregate funding associations: MMF Treasury holdings and ON RRP around bill offering-size innovations.">
-  <meta property="og:image" content="https://smkwray.github.io/tgarefill/img/irf_binary_vs_bill_surprise.png">
   <meta property="og:url" content="https://smkwray.github.io/tgarefill/">
   <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Who Funds TGA Rebuilds?">
   <meta name="twitter:description" content="Aggregate funding associations: MMF Treasury holdings and ON RRP around bill offering-size innovations.">
-  <meta name="twitter:image" content="https://smkwray.github.io/tgarefill/img/irf_binary_vs_bill_surprise.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
@@ -61,7 +59,7 @@
         of dollars in weeks, yet the transmission channels are poorly understood.
       </p>
       <p>
-        This project asks: <strong>who actually provides the funding?</strong> Drag to zoom, hover for values,
+        This project asks: <strong>which aggregate balance-sheet stocks move around rebuilds?</strong> Drag to zoom, hover for values,
         double-click to reset.
       </p>
       <div id="chart-timeline" style="width:100%;height:420px;"></div>
@@ -147,7 +145,7 @@
 
       <h3>7. Regime-Split IRFs: ON RRP Abundant vs Scarce</h3>
       <p>
-        When ON RRP holds &ge;$100B (green), rebuild shocks transmit differently than when the facility
+        When ON RRP holds &ge;$100B (green), conditional associations may differ from periods when the facility
         is scarce (red). These are binary-shock IRFs split by regime &mdash; hover for exact values.
       </p>
       <div id="chart-regime-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
@@ -156,27 +154,10 @@
         Pre-facility weeks excluded from estimation.
       </p>
 
-      <h3>8. Fund-Level MMF Validation</h3>
-      <p>
-        A scoped SEC N-MFP data layer describes allocation changes across observed MMF portfolios.
-        Source gates pass on 36 contiguous monthly observations from 2022-12 through 2025-11:
-        stable fund IDs, total assets, Treasury holdings, Fed ON RRP, and repo categories are available;
-        the minimum mapped holdings share is 1.000; and benchmark reconciliation has median absolute pct diff 0.0421.
-      </p>
-      <div class="callout finding">
-        <p>
-          Across selected positive bill-surprise months, fund-level MMF allocations rise by
-          <strong>$229B</strong> in Treasury bills and coupons while Fed ON RRP falls by
-          <strong>$141B</strong>. These are descriptive allocation changes around selected months;
-          they do not identify a general bill-deposit substitution effect.
-        </p>
-      </div>
-      <figure class="figure-inset">
-        <img src="img/mmfalloc_eventstudy.svg" alt="Fund-level MMF allocation event-month deltas">
-        <figcaption>
-          SEC N-MFP fund-level validation inset. Deltas are event-month minus prior-month means across selected positive bill-surprise months.
-        </figcaption>
-      </figure>
+      <h3>8. Descriptive MMF Allocation Extension</h3>
+      <p>The separate SEC N-MFP extension compares observed fund allocations around selected months.
+        It neither validates the canonical estimator nor independently establishes its mechanism.
+        Exact extension results are withheld pending a separate source-and-output receipt.</p>
 
     </section>
 
@@ -196,8 +177,8 @@
 
       <h3>Attribution Decomposition &mdash; Top 20 Events</h3>
       <p>
-        Stacked bars show positive proxy contributions by channel. White dots = actual &Delta;TGA.
-        Bars exceeding the dot indicate over-explanation from channel overlap.
+        Stacked bars show positive movements in overlapping aggregate stock proxies. White dots = actual &Delta;TGA.
+        These overlapping movements are not an accounting allocation of TGA funding.
       </p>
       <div id="chart-attribution" style="width:100%;height:420px;"></div>
     </section>
@@ -229,24 +210,24 @@
         <table>
           <thead><tr><th>Channel</th><th>Source</th><th>Sign</th><th>Interpretation</th></tr></thead>
           <tbody>
-            <tr><td>Reserve drain</td><td>FRED WRBWFRBL (H.4.1)</td><td>&minus;1</td><td>Reserves &darr; &rarr; money &rarr; TGA</td></tr>
-            <tr><td>Deposit drawdown</td><td>FRED DPSACBW027NBOG (H.8)</td><td>&minus;1</td><td>Deposits &darr; &rarr; money left banks</td></tr>
-            <tr><td>ON RRP runoff</td><td>FRED RRPONTSYD</td><td>&minus;1</td><td>ON RRP &darr; &rarr; money left facility</td></tr>
-            <tr><td>Bank T&amp;A</td><td>FRED TASACBW027NBOG (H.8)</td><td>+1</td><td>Banks bought Treasuries</td></tr>
-            <tr><td>MMF Treasury</td><td>OFR MMF-MMF_T_TOT-M</td><td>+1</td><td>MMFs bought Treasuries</td></tr>
-            <tr><td>Dealer repo</td><td>OFR NYPD-PD_RP_T_TOT-A</td><td>+1</td><td>Dealers financed inventory</td></tr>
+            <tr><td>Reserve drain</td><td>FRED WRBWFRBL (H.4.1)</td><td>&minus;1</td><td>Aggregate reserve balances decline</td></tr>
+            <tr><td>Deposit drawdown</td><td>FRED DPSACBW027NBOG (H.8)</td><td>&minus;1</td><td>Aggregate bank deposit balances decline</td></tr>
+            <tr><td>ON RRP runoff</td><td>FRED RRPONTSYD</td><td>&minus;1</td><td>Aggregate ON RRP balances decline</td></tr>
+            <tr><td>Bank T&amp;A</td><td>FRED TASACBW027NBOG (H.8)</td><td>+1</td><td>Bank Treasury and agency security holdings increase</td></tr>
+            <tr><td>MMF Treasury</td><td>OFR MMF-MMF_T_TOT-M</td><td>+1</td><td>Aggregate MMF Treasury holdings increase</td></tr>
+            <tr><td>Dealer repo</td><td>OFR NYPD-PD_RP_T_TOT-A</td><td>+1</td><td>Reported dealer repo balances increase</td></tr>
           </tbody>
         </table>
       </div>
       <p>14-day staleness guard. Foreign holdings (quarterly) excluded from weekly attribution.</p>
 
-      <h3>Auction-Schedule Surprise</h3>
+      <h3>Bill Offering-Size Deviation</h3>
       <div class="callout">
         <p>
           <strong>surprise = offering_amt &minus; trailing_median</strong>(last 8 same-term &times; reopening-status auctions, min 4).
           Summed to weekly. Tax-receipt surprise (DTS deposits) as control.
           A same-term-only grouping is tracked separately as a robustness comparison.
-          Strips ~94% of predictable auction supply.
+          This trailing-median deviation does not measure market expectations or constitute an instrument.
         </p>
       </div>
 
@@ -262,10 +243,10 @@
 
       <div class="callout caution">
         <p>
-          <strong>Caveats:</strong> (1) Identifies <em>issuance-driven</em> rebuilds only.
+          <strong>Caveats:</strong> (1) Describes associations with bill offering-size deviations.
           (2) h=&minus;1 ON RRP pre-trend from same-week announcement.
-          (3) Shock persistence (autocorr=0.86) inflates h&gt;8.
-          (4) CMB robustness supports direction but has own pre-trends.
+          (3) Persistence limits interpretation as a single isolated event.
+          (4) CMB comparisons also have pre-trends and do not establish a mechanism.
         </p>
       </div>
     </section>
@@ -278,13 +259,13 @@
       <p>All data from free, official U.S. government sources. No proprietary data.</p>
       <div class="source-grid">
         <div class="source-card"><div class="source-name">FiscalData DTS</div><div class="source-detail">Daily Treasury Statement. TGA Wednesday close = primary series.</div><span class="source-freq">Daily</span></div>
-        <div class="source-card"><div class="source-name">FiscalData Auctions</div><div class="source-detail">Auction results. Basis for bill-size surprise instrument.</div><span class="source-freq">Per auction</span></div>
+        <div class="source-card"><div class="source-name">FiscalData Auctions</div><div class="source-detail">Auction results. Basis for bill offering-size deviation.</div><span class="source-freq">Per auction</span></div>
         <div class="source-card"><div class="source-name">FRED H.4.1</div><div class="source-detail">TGA (WTREGEN), reserves (WRBWFRBL), reverse repos. Millions USD.</div><span class="source-freq">Weekly</span></div>
         <div class="source-card"><div class="source-name">FRED H.8</div><div class="source-detail">Deposits (DPSACBW027NBOG), bank T&amp;A (TASACBW027NBOG). Billions &rarr; millions.</div><span class="source-freq">Weekly</span></div>
         <div class="source-card"><div class="source-name">FRED ON RRP</div><div class="source-detail">RRPONTSYD. Daily facility usage, resampled weekly.</div><span class="source-freq">Daily</span></div>
         <div class="source-card"><div class="source-name">OFR STFM &mdash; MMF</div><div class="source-detail">42 series incl. MMF Treasury holdings. Monthly, forward-filled.</div><span class="source-freq">Monthly</span></div>
         <div class="source-card"><div class="source-name">OFR STFM &mdash; NYPD</div><div class="source-detail">194 series incl. dealer Treasury repo. Ended Dec 2021.</div><span class="source-freq">Weekly</span></div>
-        <div class="source-card"><div class="source-name">SEC DERA N-MFP</div><div class="source-detail">Official monthly flat-file zips. Fund-level MMF holdings and Fed ON RRP/repo validation.</div><span class="source-freq">Monthly</span></div>
+        <div class="source-card"><div class="source-name">SEC DERA N-MFP</div><div class="source-detail">Official monthly flat-file zips. Descriptive fund-level MMF holdings and Fed ON RRP/repo allocations.</div><span class="source-freq">Monthly</span></div>
         <div class="source-card"><div class="source-name">FRED FDHBFIN</div><div class="source-detail">Foreign Treasury holdings. Quarterly. Reference only.</div><span class="source-freq">Quarterly</span></div>
       </div>
     </section>
@@ -300,7 +281,7 @@
         <li><strong>Shock persistence.</strong> Autocorrelation = 0.86. Long-horizon effects contaminated.</li>
         <li><strong>NSA baseline.</strong> Month dummies control seasonality. Seasonally adjusted series provide a sensitivity comparison.</li>
         <li><strong>Accounting overlap.</strong> Channels are not mutually exclusive.</li>
-        <li><strong>Fund-level validation boundary.</strong> SEC N-MFP evidence supports MMF allocation rotation; it does not identify final household ownership or bank-deposit pass-through.</li>
+        <li><strong>Separate allocation extension.</strong> SEC N-MFP event-window comparisons neither validate the canonical estimator nor independently establish its mechanism. Exact extension results require a separate receipt.</li>
       </ul>
     </section>
 

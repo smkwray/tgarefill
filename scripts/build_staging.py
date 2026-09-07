@@ -9,12 +9,13 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 import json
+import hashlib
 import logging
 
 import pandas as pd
 
 from tgarefill.data.fiscaldata import payload_to_frame
-from tgarefill.data.raw_store import RawPayloadStore
+from tgarefill.data.raw_store import open_fiscaldata_snapshot
 from tgarefill.data.fred import load_series_csv
 from tgarefill.data.ofr import dataset_payload_to_long_frame
 from tgarefill.logging_utils import configure_logging
@@ -116,8 +117,7 @@ def stage_fred(settings) -> list[dict[str, str]]:
 
 def stage_fiscaldata(settings) -> list[dict[str, str]]:
     raw_dir = settings.paths.raw / "fiscaldata"
-    store_path = raw_dir / "fiscaldata.sqlite"
-    store = RawPayloadStore(store_path) if store_path.exists() else None
+    store, acquisition, run_id = open_fiscaldata_snapshot(raw_dir)
     staging_dir = ensure_dir(settings.paths.staging / "fiscaldata")
     manifest: list[dict[str, str]] = []
     skipped = 0
@@ -126,15 +126,17 @@ def stage_fiscaldata(settings) -> list[dict[str, str]]:
     endpoints = settings.data_sources.get("fiscaldata", {}).get("endpoints", {})
 
     for key, meta in endpoints.items():
-        path = raw_dir / f"{key}.json"
         required = bool(meta.get("required_for_mvp", False))
-        if store is not None and key in store:
-            payload = store.get_json(key)
-            source_file = f"{store_path.name}#{key}"
-        elif path.exists():
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            source_file = path.name
+        entry = acquisition.get(key, {})
+        if entry.get("status") == "downloaded":
+            payload_bytes = store.get_bytes(key)
+            if hashlib.sha256(payload_bytes).hexdigest() != entry.get("sha256"):
+                raise RuntimeError(f"FiscalData payload not bound to current manifest: {key}")
+            payload = json.loads(payload_bytes)
+            source_file = f"snapshots/{run_id}/fiscaldata.sqlite#{key}"
         else:
+            # A failed optional acquisition cannot leave old staging presented as current.
+            (staging_dir / f"{key}.parquet").unlink(missing_ok=True)
             if required:
                 missing_required.append(key)
                 logger.error("Missing required FiscalData raw payload: %s", key)
@@ -144,6 +146,7 @@ def stage_fiscaldata(settings) -> list[dict[str, str]]:
             continue
         df = payload_to_frame(payload)
         if df.empty:
+            (staging_dir / f"{key}.parquet").unlink(missing_ok=True)
             if required:
                 empty_required.append(key)
                 logger.error("Required FiscalData payload parsed to zero rows: %s", source_file)

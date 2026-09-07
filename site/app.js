@@ -183,7 +183,7 @@ async function renderIRFComparison() {
     const traces = [];
     for (const [spec, color, dash, label] of [
       ['binary', COLORS.binary, 'solid', 'Binary shock'],
-      ['bill_surprise', COLORS.billSurprise, 'dash', 'Bill surprise'],
+      ['bill_surprise_extended_latest', COLORS.billSurprise, 'dash', 'Bill surprise'],
     ]) {
       const rows = data.filter(r => r.response_var === v && r.shock_spec === spec);
       rows.sort((a, b) => a.horizon - b.horizon);
@@ -371,7 +371,7 @@ async function renderResultsTable() {
 
   for (const v of order) {
     const bRow = data.find(r => r.response_var === v && r.shock_spec === 'binary' && r.horizon === 4);
-    const sRow = data.find(r => r.response_var === v && r.shock_spec === 'bill_surprise' && r.horizon === 4);
+    const sRow = data.find(r => r.response_var === v && r.shock_spec === 'bill_surprise_extended_latest' && r.horizon === 4);
     const label = RESPONSE_LABELS[v] || v;
 
     const fmt = (r) => {
@@ -464,7 +464,7 @@ async function renderPretrends() {
   const vars = Object.keys(RESPONSE_LABELS);
   for (const v of vars) {
     const binaryPre = data.filter(r => r.response_var === v && r.shock_spec === 'binary' && r.horizon < 0);
-    const billPre = data.filter(r => r.response_var === v && r.shock_spec === 'bill_surprise' && r.horizon < 0);
+    const billPre = data.filter(r => r.response_var === v && r.shock_spec === 'bill_surprise_extended_latest' && r.horizon < 0);
     const binarySig = binaryPre.filter(r => r.significant_5pct).length;
     const billSig = billPre.filter(r => r.significant_5pct).length;
 

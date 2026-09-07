@@ -9,6 +9,10 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 import logging
+import hashlib
+import os
+import shutil
+import uuid
 
 from tgarefill.data.fiscaldata import fetch_paginated_endpoint
 from tgarefill.data.raw_store import RawPayloadStore
@@ -29,7 +33,10 @@ def main() -> None:
     source_cfg = settings.data_sources["fiscaldata"]
     base_url = source_cfg["base_url"]
     raw_dir = ensure_dir(settings.paths.raw / "fiscaldata")
-    store = RawPayloadStore(raw_dir / "fiscaldata.sqlite")
+    run_id = uuid.uuid4().hex
+    snapshots = ensure_dir(raw_dir / "snapshots")
+    temporary = ensure_dir(snapshots / f".{run_id}")
+    store = RawPayloadStore(temporary / "fiscaldata.sqlite")
     manifest: list[dict[str, object]] = []
     required_failures: list[str] = []
 
@@ -53,6 +60,7 @@ def main() -> None:
                     "record_count": payload.get("record_count", 0),
                     "saved_to": f"{store.path.name}#{key}",
                     "status": "downloaded",
+                    "sha256": hashlib.sha256(store.get_bytes(key)).hexdigest(),
                 }
             )
         except Exception as exc:
@@ -75,12 +83,21 @@ def main() -> None:
                 logger.warning("Optional FiscalData endpoint failed: %s (%s)", key, exc)
 
     store.compact()
-    write_json(manifest, raw_dir / "manifest.json")
     logger.info("Saved %s FiscalData payloads", len(manifest))
     if required_failures:
+        shutil.rmtree(temporary)
         raise RuntimeError(
             f"Required FiscalData downloads failed: {', '.join(required_failures)}"
         )
+
+    write_json({"run_id": run_id, "payload_kind": "normalized_paginated_payload",
+                "store_sha256": hashlib.sha256(store.path.read_bytes()).hexdigest(),
+                "endpoints": manifest}, temporary / "manifest.json")
+    manifest_hash = hashlib.sha256((temporary / "manifest.json").read_bytes()).hexdigest()
+    os.replace(temporary, snapshots / run_id)
+    pointer = raw_dir / f".current-{run_id}.json"
+    write_json({"run_id": run_id, "manifest_sha256": manifest_hash}, pointer)
+    os.replace(pointer, raw_dir / "current.json")
 
 
 if __name__ == "__main__":

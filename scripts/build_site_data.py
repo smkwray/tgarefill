@@ -16,7 +16,6 @@ import shutil
 import numpy as np
 import pandas as pd
 
-from tgarefill.analytics.auction_shocks import build_bill_size_surprise
 from tgarefill.analytics.eras import ERA_ORDER, assign_era
 from tgarefill.logging_utils import configure_logging
 from tgarefill.settings import get_settings
@@ -130,8 +129,29 @@ def build_attribution_enriched(attr_csv: Path, site_dir: Path) -> None:
     _write_json(out, site_dir / "data" / "attribution_enriched.json")
 
 
+def _extended_results(lp_csv: Path, robustness_csv: Path) -> tuple[pd.DataFrame, float]:
+    rows = pd.read_csv(lp_csv)
+    rows = rows[(rows["shock_spec"] == "bill_surprise_extended_latest") & rows["regime"].isna()].copy()
+    _require_columns(rows, ["sample", "timing", "canonical_sample_end", "rmp_regime_start"], "extended LP")
+    if rows.empty or rows[["sample", "timing", "canonical_sample_end", "rmp_regime_start"]].drop_duplicates().shape[0] != 1:
+        raise ValueError("Expected one named extended LP sample and timing")
+    if not rows["sample"].eq("extended_through_latest_with_post_rmp_labeled").all() or not rows["timing"].eq("issue_week").all():
+        raise ValueError("Unexpected extended LP sample or timing")
+    retained = pd.read_csv(robustness_csv)
+    retained = retained[retained["spec"] == "extended_latest"]
+    scales = retained["shock_sd_bn"].drop_duplicates()
+    if len(scales) != 1 or not np.isfinite(scales.iloc[0]) or scales.iloc[0] <= 0:
+        raise ValueError("Expected one positive extended-sample shock SD")
+    sd = float(scales.iloc[0]) * 1000
+    for result in retained.itertuples(index=False):
+        match = rows[(rows["response_var"] == result.response_var) & (rows["horizon"] == 4)]
+        if len(match) != 1 or not np.isclose(float(match.iloc[0]["beta"]) * sd / 1000, result.h4_effect_bn, atol=0.001):
+            raise ValueError("Extended sample coefficient/SD mismatch")
+    return rows, sd
+
+
 def build_lp_comparison(
-    lp_csv: Path, aslp_csv: Path, bill_shock_sd: float, site_dir: Path
+    lp_csv: Path, aslp_csv: Path, robustness_csv: Path, site_dir: Path
 ) -> None:
     lp = pd.read_csv(lp_csv)
     _require_columns(lp, ["shock_spec", "regime", "response_var", "horizon", "beta", "ci_lower", "ci_upper"], "local_projections.csv")
@@ -140,9 +160,7 @@ def build_lp_comparison(
     binary_pooled["ci_lower_bn"] = (binary_pooled["ci_lower"] / 1000).round(2)
     binary_pooled["ci_upper_bn"] = (binary_pooled["ci_upper"] / 1000).round(2)
 
-    aslp = pd.read_csv(aslp_csv)
-    _require_columns(aslp, ["shock_spec", "regime", "response_var", "horizon", "beta", "ci_lower", "ci_upper"], "auction_shock_lp.csv")
-    bill_pooled = aslp[(aslp["shock_spec"] == "bill_surprise") & (aslp["regime"].isna())].copy()
+    bill_pooled, bill_shock_sd = _extended_results(aslp_csv, robustness_csv)
     bill_pooled["beta_bn"] = (bill_pooled["beta"] * bill_shock_sd / 1000).round(2)
     bill_pooled["ci_lower_bn"] = (bill_pooled["ci_lower"] * bill_shock_sd / 1000).round(2)
     bill_pooled["ci_upper_bn"] = (bill_pooled["ci_upper"] * bill_shock_sd / 1000).round(2)
@@ -151,8 +169,10 @@ def build_lp_comparison(
         "response_var", "horizon", "beta", "se", "se_nw", "t_stat", "t_stat_nw",
         "ci_lower", "ci_upper", "n_obs", "r_squared", "regime", "significant_5pct",
         "shock_spec", "beta_bn", "ci_lower_bn", "ci_upper_bn",
+        "sample", "timing", "canonical_sample_end", "rmp_regime_start", "shock_sd_bn",
     ]
-    combined = pd.concat([binary_pooled[keep], bill_pooled[keep]], ignore_index=True)
+    bill_pooled["shock_sd_bn"] = bill_shock_sd / 1000
+    combined = pd.concat([binary_pooled.reindex(columns=keep), bill_pooled.reindex(columns=keep)], ignore_index=True)
     combined = combined.replace({np.nan: None})
     _write_json(combined.to_dict("records"), site_dir / "data" / "lp_comparison.json")
 
@@ -192,16 +212,15 @@ def build_summary(
     events_csv: Path,
     pooled_lp_csv: Path,
     auction_shock_lp_csv: Path,
-    bill_shock_sd: float,
+    robustness_csv: Path,
     site_dir: Path,
 ) -> None:
     events = pd.read_csv(events_csv)
     _require_columns(events, ["event_id"], "event_candidates.csv")
     pooled_lp = pd.read_csv(pooled_lp_csv)
-    auction_lp = pd.read_csv(auction_shock_lp_csv)
+    bill_pooled, bill_shock_sd = _extended_results(auction_shock_lp_csv, robustness_csv)
 
     binary_pooled = pooled_lp[(pooled_lp["shock_spec"] == "binary") & (pooled_lp["regime"].isna())].copy()
-    bill_pooled = auction_lp[(auction_lp["shock_spec"] == "bill_surprise") & (auction_lp["regime"].isna())].copy()
 
     def _pretrend_counts(df: pd.DataFrame) -> dict[str, int]:
         placebo = df[df["horizon"] < 0]
@@ -224,6 +243,11 @@ def build_summary(
         }
 
     summary = {
+        "selected_spec": "extended_latest",
+        "sample": str(bill_pooled.iloc[0]["sample"]),
+        "timing": str(bill_pooled.iloc[0]["timing"]),
+        "canonical_sample_end": str(bill_pooled.iloc[0]["canonical_sample_end"]),
+        "rmp_regime_start": str(bill_pooled.iloc[0]["rmp_regime_start"]),
         "event_count": int(events["event_id"].nunique()),
         "bill_shock_sd_bn": round(bill_shock_sd / 1000, 2),
         "panel": {
@@ -257,6 +281,8 @@ def copy_figures(figures_dir: Path, site_dir: Path) -> None:
     img_dir.mkdir(parents=True, exist_ok=True)
     count = 0
     for src in [*figures_dir.glob("*.png"), *figures_dir.glob("*.svg")]:
+        if src.name in {"irf_binary_vs_bill_surprise.png", "mmfalloc_eventstudy.svg"}:
+            continue
         shutil.copy2(src, img_dir / src.name)
         count += 1
     logger.info("Copied %s figures to site/img/", count)
@@ -268,11 +294,6 @@ def main() -> None:
     site_dir = settings.paths.root / "site"
 
     panel = pd.read_parquet(settings.paths.processed / "master_weekly_panel.parquet")
-    auctions = pd.read_parquet(settings.paths.staging / "fiscaldata" / "auctions_query.parquet")
-    bill_surprise = build_bill_size_surprise(auctions, grouping="term_reopening")
-    panel_merged = panel.merge(bill_surprise, on="date", how="left")
-    panel_merged["bill_size_surprise"] = panel_merged["bill_size_surprise"].fillna(0)
-    bill_shock_sd = float(panel_merged["bill_size_surprise"].std())
 
     build_timeline(panel, site_dir)
     build_events(settings.paths.output_tables / "event_candidates.csv", site_dir)
@@ -280,7 +301,7 @@ def main() -> None:
     build_lp_comparison(
         settings.paths.output_tables / "local_projections.csv",
         settings.paths.output_tables / "auction_shock_lp.csv",
-        bill_shock_sd,
+        settings.paths.output_tables / "promotion_robustness_summary.csv",
         site_dir,
     )
     build_era_summary(settings.paths.output_tables / "attribution_baseline.csv", site_dir)
@@ -290,7 +311,7 @@ def main() -> None:
         events_csv=settings.paths.output_tables / "event_candidates.csv",
         pooled_lp_csv=settings.paths.output_tables / "local_projections.csv",
         auction_shock_lp_csv=settings.paths.output_tables / "auction_shock_lp.csv",
-        bill_shock_sd=bill_shock_sd,
+        robustness_csv=settings.paths.output_tables / "promotion_robustness_summary.csv",
         site_dir=site_dir,
     )
     copy_figures(settings.paths.output_figures, site_dir)
