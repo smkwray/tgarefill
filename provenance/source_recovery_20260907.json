@@ -1,0 +1,142 @@
+{
+  "schema": "source-recovery-bridge.v1",
+  "recovered_on": "2026-09-07",
+  "project": "tgarefill",
+  "public_base_commit": "7b9afbe7de6501e5a2b2c14556baf22d2bf6a964",
+  "recovered_source_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+  "source_successor_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+  "historical_producer_commit": "9855ce5b32aba033dba0be520ece0991e61b57cc",
+  "historical_receipt_commit": "887a3e1f94a85e9ed4084fb51e9e9e51a7231902",
+  "historical_commit_objects_recovered": false,
+  "original_commit_identity_claimed": false,
+  "historical_receipt": {
+    "path": "provenance/open07_tgarefill_producer_receipt.json",
+    "sha256": "9e073ee074e7d221e3f3ef9bdc7c27dddbbfa119ae982f19e1fc02d359a16319"
+  },
+  "basis": "File content hashes bind preserved source and retained results. New commits continue the available public history; they do not recreate or authenticate the missing original commits. No economic production was rerun during recovery.",
+  "source_files": [
+    {
+      "path": "scripts/build_auction_shock_lp.py",
+      "historical_sha256": "aff297a7846b3e234fb97517c8c250a528426f3f17a1ce0702af1a651ce9054a",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "src/tgarefill/analytics/auction_shocks.py",
+      "historical_sha256": "ce69f0effee00371e807eec4a46a7ef680d3d1b5d24c7f58eb2e828c1898c92a",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "src/tgarefill/analytics/events.py",
+      "historical_sha256": "9a92734a607d730d1099b5df997715f18ef202dc02f5867ac1b0afb3df19634f",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "src/tgarefill/analytics/local_projections.py",
+      "historical_sha256": "258c222806e6601af4575f9c7348569ddf9fb7c95acaa78a5622379e0bb9f179",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "src/tgarefill/logging_utils.py",
+      "historical_sha256": "9ed13d593606e0f8d51fee1a942ab8c0343830f489b58474c355c7d75a06f031",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "src/tgarefill/settings.py",
+      "historical_sha256": "82f31df5193ee5243ef5c38f3b82f975bca74f82cfe085292cdc21b25e477b94",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "src/tgarefill/utils/files.py",
+      "historical_sha256": "0b24fe631c21b22920d1ca2aa6d1d38a6f64bd9eea2c726a1889243b3f36a05c",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/analysis.yaml",
+      "historical_sha256": "82f397000a86b0f45c435efe7910b9aaf0e8ee929cb1fb09b06e375d72fa57e0",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/episode_rules.yaml",
+      "historical_sha256": "1a18b46e66a8e9b47d2137dad10cdf1b8216f0c75d1d6e3035611ce2b4468414",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/data_sources.yaml",
+      "historical_sha256": "999a0171b9d88d1b9e2eb369cf5ff9b18d26580018d49bde4c75c8e620209875",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/fred_series.yaml",
+      "historical_sha256": "1a14862296fc2e9d93daf6d5b1fcfde2e3f681a2a9a35ee09fb14a4de21f3178",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "configs/stfm_queries.yaml",
+      "historical_sha256": "f1d33220ab819d779312e59b66edfdea3a1fc4593e4e6be80bf3ede9b11eb11e",
+      "exact_blob_commit": "861ce3c4fba67e43627ce14c13a76783c2079d20",
+      "status": "exact_receipted_blob"
+    },
+    {
+      "path": "pyproject.toml",
+      "historical_sha256": "18a7ecefc9d1c30febff8bae49cc0cf8df71a1a1993a8eeb0558daabedc7e831",
+      "exact_blob_commit": "7b9afbe7de6501e5a2b2c14556baf22d2bf6a964",
+      "status": "exact_receipted_blob",
+      "successor_sha256": "c0fa2990d6dd5259daf31222c8ff8d23d09a43e2e0ff76246f9f67167191f098"
+    }
+  ],
+  "successor_changes": [
+    "The added zstandard>=0.23 dependency supports the separate raw-payload storage feature. The historical pyproject.toml blob is exactly present at public_base_commit; the other 12 generating-surface files match recovered_source_commit."
+  ],
+  "claim_boundary": {
+    "status": "aggregate_funding_association_only",
+    "admitted": "Unexpected bill-funded TGA rebuild episodes are associated with higher MMF Treasury holdings and ON RRP runoff in the promoted aggregate weekly evidence.",
+    "excluded": [
+      "household behavior",
+      "a general bill-deposit substitution law",
+      "exact final-owner tracing",
+      "bank-deposit pass-through",
+      "an unrestricted causal mechanism"
+    ]
+  },
+  "retained_file_checks": {
+    "inputs": [
+      {
+        "path": "data/processed/master_weekly_panel.parquet",
+        "sha256": "f81b7a17393f6b89edeb25e7327a78ce764333282b79499e90ccb6fff9ad52fc"
+      },
+      {
+        "path": "data/staging/fiscaldata/auctions_query.parquet",
+        "sha256": "71cebe9eb6b515970c567b0da944ab9adfc59a3f7a61f5aaacdcdf8929cd1dc8"
+      },
+      {
+        "path": "data/staging/fiscaldata/dts_deposits_withdrawals_operating_cash.parquet",
+        "sha256": "d57368e1a7f76a42feceff8096e0d04688989cc9d160f63053b8067be852d887"
+      }
+    ],
+    "retained_artifacts": [
+      {
+        "path": "outputs/tables/canonical_bill_surprise_shocks.csv",
+        "sha256": "5684fcda9ea7f1407b4ea4fcad020f49a6feac5daab9ed4cb3b3d88ec019b1cf"
+      },
+      {
+        "path": "outputs/tables/auction_shock_lp.csv",
+        "sha256": "0921a0bd13f530418d2409af50d45920449e7de66c68c58dc349545ef81ae4d7"
+      },
+      {
+        "path": "outputs/tables/promotion_robustness_summary.csv",
+        "sha256": "ad94ffcb50426ad68054183664d44f7d0ec2c36048cbd219db2083c313116834"
+      }
+    ]
+  }
+}
