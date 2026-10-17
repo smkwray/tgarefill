@@ -35,7 +35,7 @@ def plot_irfs(lp_df: pd.DataFrame, fig_dir: Path, response_vars: list[tuple[str,
 
     if not has_regime:
         # Single-regime plot
-        n_vars = len(response_order)
+        _n_vars = len(response_order)
         fig, axes = plt.subplots(2, 3, figsize=(15, 8), sharey=False)
         axes = axes.flatten()
 

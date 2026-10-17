@@ -95,3 +95,8 @@ uv.lock
 *.sync-conflict-*
 outputs/reports/
 outputs/*.md
+
+# Private local configuration
+.private-denylist
+.*-private-denylist
+/.env.example

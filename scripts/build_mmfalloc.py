@@ -56,13 +56,14 @@ def main() -> None:
     configure_logging()
     args = parse_args()
     settings = get_settings()
-    session = build_session(
-        os.getenv("TGAREFILL_SEC_USER_AGENT", "Shane Wray shanewray@example.com tgarefill/0.1")
-    )
 
     raw_dir = settings.paths.raw / "sec_nmfp"
     months = month_range(args.start_month, args.end_month)
     if not args.skip_download:
+        user_agent = os.getenv("TGAREFILL_SEC_USER_AGENT", "").strip()
+        if not user_agent:
+            raise ValueError("Set TGAREFILL_SEC_USER_AGENT with your contact information before SEC downloads")
+        session = build_session(user_agent)
         links = discover_sec_nmfp_links(session)
         selected = select_monthly_sec_links(links, months)
         manifest = download_sec_zips(session, selected, raw_dir, overwrite=args.overwrite_raw)

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-  {name = "Shane Wray"}
+  {name = "smkwray"}
 ]
 dependencies = [
   "beautifulsoup4>=4.12",
@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
+dev = ["ruff>=0.6",
   "pytest>=8.2",
   "matplotlib>=3.9",
   "seaborn>=0.13",
@@ -42,3 +42,11 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff.lint]
+# Explicit correctness checks independent of Ruff version defaults.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Standalone entry points add src to the import path before package imports.
+"scripts/*.py" = ["E402"]

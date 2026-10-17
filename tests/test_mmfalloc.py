@@ -217,3 +217,22 @@ def test_outputs_are_staged_before_replacing_previous_generation(tmp_path, monke
         mmf.write_all_outputs(**arguments)
     assert (tmp_path / "tables/mmfalloc_source_gates.csv").read_bytes() == previous
     assert not list(tmp_path.glob(".mmfalloc-*"))
+
+
+def test_live_sec_download_requires_explicit_contact_before_network(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    import pytest
+    import scripts.build_mmfalloc as cli
+
+    monkeypatch.delenv("TGAREFILL_SEC_USER_AGENT", raising=False)
+    monkeypatch.setattr(cli, "parse_args", lambda: SimpleNamespace(
+        start_month="2023-01", end_month="2023-01", skip_download=False,
+    ))
+    monkeypatch.setattr(cli, "get_settings", lambda: SimpleNamespace(
+        paths=SimpleNamespace(raw=tmp_path),
+    ))
+    monkeypatch.setattr(cli, "build_session", lambda *_: pytest.fail("network session opened"))
+    with pytest.raises(ValueError, match="TGAREFILL_SEC_USER_AGENT"):
+        cli.main()
+    assert not list(tmp_path.iterdir())

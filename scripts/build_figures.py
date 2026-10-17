@@ -58,7 +58,7 @@ def fig_attribution_stacked(attr: pd.DataFrame, out: Path) -> None:
     top = top.sort_values("baseline_date")
 
     cols = [c for c, _ in PROXY_COLS]
-    labels = [l for _, l in PROXY_COLS]
+    _labels = [label for _, label in PROXY_COLS]
 
     plot_data = top[cols].fillna(0).clip(lower=0)
     # Convert to $B
@@ -94,7 +94,7 @@ def fig_attribution_stacked(attr: pd.DataFrame, out: Path) -> None:
 def fig_era_dominant_source(attr: pd.DataFrame, out: Path) -> None:
     """Grouped bar chart of dominant funding source by era."""
     proxy_amount_cols = [c for c, _ in PROXY_COLS]
-    proxy_labels = {c: l for c, l in PROXY_COLS}
+    proxy_labels = {column: label for column, label in PROXY_COLS}
 
     dominant = []
     for _, row in attr.iterrows():

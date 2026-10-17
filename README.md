@@ -2,13 +2,13 @@
 
 **[Live Site](https://smkwray.github.io/tgarefill/)** | Empirical decomposition of Treasury General Account rebuild funding channels using bill offering-size innovations.
 
-When the U.S. Treasury rebuilds its cash balance by issuing securities, where does the money come from? This project identifies 51 rapid rebuild episodes (2005-2026) and studies aggregate funding associations around bill offering-size innovations.
+When the US Treasury rebuilds its cash balance by issuing securities, where does the money come from? This project identifies rapid rebuild episodes and studies aggregate funding associations around bill offering-size innovations.
 
 ## Central Finding
 
-Larger bill offering-size innovations are associated with increases in aggregate MMF Treasury holdings and declines in ON RRP balances. The channels overlap: their coefficient ratio is not a funding share, and statistically insignificant bank outcomes do not establish an absence of bank involvement.
+Larger bill offering-size innovations are associated with increases in aggregate money-market fund (MMF) Treasury holdings and declines in overnight reverse repurchase agreement (ON RRP) balances. The channels overlap: their coefficient ratio is not a funding share, and statistically insignificant bank outcomes do not establish an absence of bank involvement.
 
-The numerical comparison below and the interactive site retain an exploratory specification. The separately retained canonical pre-December-2025 specification estimates an h=4 MMF association of +$44.1B (t=3.82) and an ON RRP association of -$30.4B (t=-4.99), per one-standard-deviation bill-size innovation. Monthly MMF observations are carried into a weekly panel; this does not create independently observed weekly MMF flows. These are conditional associations, without household, final-owner, bank-deposit pass-through, or unrestricted causal identification.
+The canonical pre-December-2025 specification estimates an h=4 MMF association of +$44.1B (t=3.82) and an ON RRP association of -$30.4B (t=-4.99), per one-standard-deviation bill-size innovation. Monthly MMF observations are carried into a weekly panel; this does not create independently observed weekly MMF flows. These are conditional associations, without household, final-owner, bank-deposit pass-through, or unrestricted causal identification.
 
 Fewer significant placebo coefficients in the bill-surprise comparison are a diagnostic, not proof of exogeneity. SEC N-MFP data provide a separate descriptive view of MMF allocation changes around selected positive bill-surprise months during December 2022–November 2025.
 
@@ -62,24 +62,11 @@ Baseline (binary shock): 2 shock lags, 1 response lag, 11 month dummies. Bill-su
 
 ON RRP abundant (≥$100B) vs. scarce (<$100B). Pre-facility weeks (before 2013, ON RRP = NaN) are excluded from regime estimation, not lumped into "scarce."
 
-## Exploratory Comparison
-
-| Channel | Binary Pre-trends | Bill-Surprise Pre-trends | Bill-Surprise h=4 (1-std) |
-|---------|:-:|:-:|:-:|
-| Reserves | 2/4 | 0/4 | -$2B, t=-0.1 |
-| Bank Deposits | 2/4 | 0/4 | +$8B, t=0.7 |
-| ON RRP | 3/4 | 1/4 | **-$31B, t=-5.0*** |
-| Bank T&A | 1/4 | 0/4 | +$4B, t=1.5 |
-| MMF Treasury | 2/4 | 0/4 | **+$41B, t=3.4*** |
-| Dealer Repo | 2/4 | 0/4 | -$1B, t=-0.2 |
-
-\* Significant at 5% with Newey-West HAC standard errors.
-
 ## Descriptive MMF Allocation Extension
 
 The `mmfalloc` extension parses SEC N-MFP monthly files and compares observed fund allocations around selected months. Requested source months must match observed coverage; events are ranked only within that observed window. Failed source gates stop the build before replacing any outputs.
 
-This separate descriptive extension neither validates the canonical estimator nor independently establishes its mechanism. Exact extension values and its figure are withheld from this release pending a separate receipt binding inputs, selected events, gates and outputs. The canonical OPEN-07 receipt does not cover the extension.
+This separate descriptive extension neither validates the canonical estimator nor independently establishes its mechanism. Exact extension values and its figure are withheld from this release pending a separate receipt binding inputs, selected events, gates and outputs. The aggregate estimator’s evidence receipt does not cover this extension.
 
 ## Caveats
 
@@ -94,12 +81,14 @@ This separate descriptive extension neither validates the canonical estimator no
 Activate the environment you want `make` to use, install the package, then run the canonical MVP pipeline. `make` will use the active shell environment, or `VIRTUAL_ENV` / `UV_PROJECT_ENVIRONMENT` if those are set.
 
 ```bash
-# Example with uv
-uv venv ~/venvs/tgarefill --python 3.11
-source ~/venvs/tgarefill/bin/activate
-uv pip install -e ".[dev]"
+# Python 3.11 or later
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+python -B -m pytest -q
+ruff check .
 
-# Canonical MVP path
+# Acquire data and build the weekly accounting panel
 make mvp
 
 # Extended site build
@@ -109,9 +98,17 @@ make site
 make mmfalloc
 ```
 
+Raw inputs under `data/raw/`, generated panels under `data/processed/`, and
+analysis under `outputs/` are local and ignored by Git. The tracked `site/` assets
+are a curated exploratory presentation with their own sample and normalization;
+they are not the canonical pre-December-2025 result.
+
+SEC downloads require `TGAREFILL_SEC_USER_AGENT` with your own contact information.
+Cached N-MFP parsing with `--skip-download` does not require a network identity.
+
 ## Outputs
 
-The MVP command creates the canonical artifacts:
+`make mvp` creates the weekly accounting artifacts:
 
 ```
 data/processed/master_weekly_panel.parquet
@@ -124,7 +121,7 @@ The extended site build extends that with additional tables, figures, and the re
 ```
 outputs/
 ├── figures/
-│   ├── tga_timeline_events.png        # TGA with 51 events highlighted
+│   ├── tga_timeline_events.png        # TGA with detected events
 │   ├── attribution_stacked_top20.png   # Top 20 event decomposition
 │   ├── era_dominant_source.png         # Funding channel evolution
 │   ├── onrrp_era.png                   # TGA + ON RRP dual panel
@@ -147,7 +144,7 @@ site/
 
 ## Data Sources
 
-All data from free, official U.S. government sources:
+All data from free, official US government sources:
 - [FiscalData API](https://fiscaldata.treasury.gov/api-documentation/) — DTS, MTS, Auctions
 - [FRED](https://fred.stlouisfed.org/) — H.4.1, H.8, ON RRP
 - [OFR STFM](https://www.financialresearch.gov/short-term-funding-monitor/) — MMF, Primary Dealer, Repo
