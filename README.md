@@ -1,16 +1,18 @@
 # tgarefill
 
-`tgarefill` builds a weekly balance-sheet panel around Treasury General Account (TGA) rebuilds and estimates how funding channels move around rapid rebuild episodes and Treasury bill offering-size innovations. It downloads public Treasury, Federal Reserve, Office of Financial Research (OFR), and SEC datasets, aligns them to Wednesday-ending weeks in USD millions, and writes event tables, Jordà local projection estimates, charts, and static site data.
+`tgarefill` builds a weekly balance-sheet panel around Treasury General Account (TGA) rebuilds and estimates how funding channels move around rapid rebuild episodes and Treasury bill offering-size innovations. It downloads public Treasury, Federal Reserve (Fed), Office of Financial Research (OFR), and Securities and Exchange Commission (SEC) datasets, aligns them to Wednesday-ending weeks in USD millions, and writes event tables, Jordà local projection estimates, charts, and static site data.
 
 ## Data
 
-All inputs come from public US government sources, normalized to USD millions (H.8, ON RRP, and quarterly foreign debt series converted from billions; OFR series converted from raw dollars):
+All inputs come from public US government sources:
 
 - FiscalData API: Daily Treasury Statement (DTS) operating cash balance (Wednesday close TGA, primary), DTS deposits and withdrawals (for the tax-receipt surprise control), Monthly Treasury Statement (MTS), and Treasury security auctions.
-- FRED (public CSV downloads, no API key required): H.4.1 Wednesday balance-sheet levels (TGA, bank reserves, reverse repos), H.8 commercial bank deposits and Treasury/agency securities (not seasonally adjusted, seasonally adjusted, and deposit breakdowns), daily ON RRP, and quarterly foreign Treasury holdings.
+- FRED (Federal Reserve Economic Data, St. Louis Fed; public CSV downloads, no API key required): Wednesday balance-sheet levels from the Fed's H.4.1 release (TGA, bank reserves, reverse repos), commercial bank deposits and Treasury and agency securities from the H.8 release on bank balance sheets (not seasonally adjusted, seasonally adjusted, and deposit breakdowns), daily take-up at the Fed's overnight reverse repurchase (ON RRP) facility, and quarterly foreign Treasury holdings.
 - OFR Short-Term Funding Monitor (STFM): monthly money market fund (MMF) Treasury holdings and repo, plus weekly primary dealer Treasury repo.
 - Treasury.gov: investor-class auction allotments and Treasury International Capital (TIC) files.
-- SEC DERA Form N-MFP monthly zip archives (used only by the optional `mmfalloc` extension).
+- SEC Form N-MFP monthly zip archives of money market fund holdings (used only by the optional `mmfalloc` extension).
+
+The pipeline converts every series to USD millions: H.8, ON RRP, and quarterly foreign debt series from billions, and OFR series from dollars.
 
 ## Install
 
@@ -39,7 +41,7 @@ Required only when downloading SEC Form N-MFP files via `make mmfalloc`:
 
 ## Usage
 
-Build the weekly panel, detect rapid rebuild episodes, and compute event-window funding-channel changes:
+Run the core build, which downloads the data, builds the weekly panel, detects rapid rebuild episodes, and computes funding-channel changes over each rebuild window:
 
 ```bash
 make mvp
@@ -61,10 +63,12 @@ Individual pipeline stages are exposed as `Makefile` targets: `sync-raw`, `stagi
 
 ## Method
 
-- Rapid rebuild events flag weeks where weekly $\Delta\text{TGA}$ or its 4-week or 8-week cumulative change exceeds the 90th percentile of positive changes, then merge flagged weeks separated by at most 9 days (`configs/episode_rules.yaml`).
-- Bill offering-size innovations subtract, for each non-cash-management bill auction, the trailing median of the previous 8 auctions (minimum 4) in the same term and reopening group, summed to Wednesday-ending weeks (`src/tgarefill/analytics/auction_shocks.py`). A term-only grouping is computed alongside for comparison.
-- Jordà (2005) local projections run from horizon $h = -4$ through $h = 12$ weeks (excluding $h = 0$) with 2 shock lags, 1 response lag, 11 month dummies, and Newey-West HAC standard errors with bandwidth $\max(h, 1)$ (`configs/analysis.yaml`, `src/tgarefill/analytics/local_projections.py`). The bill-surprise specification adds a DTS tax-receipt surprise control and evaluates a sample ending November 30, 2025 alongside full-sample and announcement-week checks.
-- Regime splits classify weeks with ON RRP $\ge \$100\text{B}$ as abundant and $< \$100\text{B}$ as scarce; pre-facility weeks with missing ON RRP are excluded from regime regressions.
+- Rapid rebuild events flag weeks where the weekly change in the TGA, or its 4-week or 8-week cumulative change, exceeds the 90th percentile of positive changes, then merge flagged weeks separated by at most 9 days.
+- Bill offering-size innovations subtract, for each non-cash-management bill auction, the trailing median of the previous 8 auctions (minimum 4) in the same term and reopening group, summed to Wednesday-ending weeks. A term-only grouping is computed alongside for comparison.
+- Jordà (2005) local projections run at horizons from -4 to 12 weeks (excluding 0) with 2 shock lags, 1 response lag, 11 month dummies, and Newey-West standard errors with bandwidth `max(h, 1)` at horizon `h`. The bill-surprise specification adds a DTS tax-receipt surprise control. Its main sample ends November 30, 2025, before the Federal Reserve began reserve management purchases of Treasury bills in December 2025; a sample through the latest week and an announcement-week timing check run alongside it.
+- Regime splits classify weeks with ON RRP balances of $100 billion or more as abundant and the rest as scarce; pre-facility weeks with missing ON RRP are excluded from regime regressions.
+
+Episode rules are set in `configs/episode_rules.yaml` and local projection settings in `configs/analysis.yaml`.
 
 ## Output
 
